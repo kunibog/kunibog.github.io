@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KUNIBOG — POST-SOVIET LUXURY</title>
+    <title>KUNIBOG</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="apple-touch-icon" href="favicon.png">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;600;900&family=Inter:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap');
     * {
@@ -1394,7 +1396,7 @@
         NEW<br>DROP<br>2027
     </div>
     <div class="hero-image">
-        <img src="wallet.jpg" alt="KUNIBOG">
+        <img id="heroImg" src="art-tee.jpg" alt="KUNIBOG">
     </div>
     <div class="marquee">
         <div class="marquee-content">
@@ -1613,12 +1615,17 @@
                 <label style="margin:0;">Подгружать курс автоматически (если недоступно — остаётся ручной)</label>
             </div>
             <div class="form-group">
-                <label>Новый пароль админки (оставь пустым, если не меняешь)</label>
-                <input type="text" id="settingsNewPassword" placeholder="новый сложный пароль">
+                <label>Картинка на главной (hero): имя файла из репозитория или ссылка</label>
+                <input type="text" id="settingsHeroImage" placeholder="art-tee.jpg">
+            </div>
+            <div class="form-group">
+                <label>Новый пароль админки (мин. 10 символов, пусто = не менять)</label>
+                <input type="password" id="settingsNewPassword" autocomplete="new-password" placeholder="новый сложный пароль">
             </div>
             <button class="save-btn" onclick="saveSettings()">Save Settings</button>
+            <button class="save-btn" style="background:transparent;border:1px solid var(--border);color:var(--text);margin-left:8px;" onclick="adminLogout()">Выйти</button>
             <h3 style="margin: 30px 0 15px; color: var(--accent);">Бэкап данных</h3>
-            <p style="color: var(--gray); font-size: 12px; margin-bottom: 15px;">Товары/категории/способы оплаты хранятся только в этом браузере. Экспортируй JSON, чтобы не потерять изменения или перенести их.</p>
+            <p style="color: var(--gray); font-size: 12px; margin-bottom: 15px;">Всё хранится на сервере и одинаково на всех устройствах. JSON — это просто резервная копия на всякий случай.</p>
             <button class="save-btn" onclick="exportData()">Export JSON</button>
             <input type="file" id="importFile" accept="application/json" style="margin-top:10px;" onchange="importData(event)">
         </div>
@@ -1726,6 +1733,35 @@
     let pendingOrder = null;
     let selectedPaymentId = null;
 
+    // ====== БЭКЕНД (Cloudflare Worker) ======
+    // Токен бота и пароль админки лежат на сервере, в коде сайта их НЕТ.
+    // После деплоя воркера вставь сюда его адрес, например 'https://kunibog-api.твой-ник.workers.dev'
+    const API_URL = 'https://kunibog-api.arkhipowegor.workers.dev';
+    let adminToken = sessionStorage.getItem('kb_admin_token') || '';
+    let siteSettings = { telegram: '', instagram: '', usdRate: 0, rateMode: '', heroImage: '' };
+
+    async function api(path, opts) {
+        opts = opts || {};
+        const headers = {};
+        if (opts.body) headers['Content-Type'] = 'application/json';
+        if (opts.auth) headers['Authorization'] = 'Bearer ' + adminToken;
+        const r = await fetch(API_URL + path, { method: opts.method || 'GET', headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
+        let j = null; try { j = await r.json(); } catch (e) {}
+        if (!r.ok) { const err = new Error((j && j.error) || ('HTTP ' + r.status)); err.status = r.status; throw err; }
+        return j;
+    }
+    function esc(v) {
+        return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    async function sendOrderToServer(order) {
+        return api('/order', { method: 'POST', body: {
+            name: order.name, contact: order.contact, address: order.address, telegram: order.telegram,
+            items: order.items.map(i => ({ name: i.name, price: i.price })),
+            shipping: order.shipping, total: order.total, paymentMethod: order.paymentMethod
+        }});
+    }
+
     // ====== ВАЛЮТА: рубли + доллар/USDT по курсу ======
     const SHIPPING_RUB = 777; // фикс. стоимость доставки
     let usdRateRub = Number(localStorage.getItem('kb_usdRate')) || 90; // ручной курс по умолчанию
@@ -1751,13 +1787,46 @@
         } catch (e) { /* нет сети/заблокировано — остаёмся на ручном курсе */ }
     }
 
-    // ====== СОХРАНЕНИЕ ДАННЫХ АДМИНКИ В ЭТОМ БРАУЗЕРЕ ======
-    // Важно: это localStorage, он работает только в браузере того, кто редактирует.
-    // Другие посетители сайта его не увидят — см. пояснение в сопроводительном README.
+    // ====== СОХРАНЕНИЕ ДАННЫХ ======
+    // С API_URL всё уходит на сервер (видно на всех устройствах). Без него — localStorage, как раньше.
+    let saveTimer = null;
     function saveAllData() {
-        localStorage.setItem('kb_products', JSON.stringify(products));
-        localStorage.setItem('kb_categories', JSON.stringify(categories));
-        localStorage.setItem('kb_payment', JSON.stringify(paymentMethods));
+        if (!API_URL) {
+            localStorage.setItem('kb_products', JSON.stringify(products));
+            localStorage.setItem('kb_categories', JSON.stringify(categories));
+            localStorage.setItem('kb_payment', JSON.stringify(paymentMethods));
+            return;
+        }
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(async () => {
+            try {
+                await api('/data', { method: 'PUT', auth: true, body: { products, categories, paymentMethods, settings: siteSettings } });
+            } catch (e) {
+                if (e.status === 401) { adminLogout(true); alert('Сессия истекла — войди в админку заново, изменения не сохранились.'); }
+                else alert('Не удалось сохранить на сервер: ' + e.message);
+            }
+        }, 400);
+    }
+    function applySettings() {
+        const st = siteSettings;
+        if (st.usdRate > 0) usdRateRub = st.usdRate;
+        if (st.rateMode) rateMode = st.rateMode;
+        if (st.instagram) document.querySelectorAll('a[href*="instagram.com"]').forEach(a => a.href = st.instagram);
+        if (st.telegram) document.querySelectorAll('a[href*="t.me/"]').forEach(a => a.href = st.telegram);
+        if (st.heroImage) { const h = document.getElementById('heroImg'); if (h) h.src = st.heroImage; }
+    }
+    async function loadRemoteData() {
+        if (!API_URL) return;
+        try {
+            const d = await api('/data');
+            if (d && Array.isArray(d.products)) products = d.products;
+            if (d && Array.isArray(d.categories)) categories = d.categories;
+            if (d && Array.isArray(d.paymentMethods)) paymentMethods = d.paymentMethods;
+            if (d && d.settings) siteSettings = Object.assign(siteSettings, d.settings);
+            applySettings();
+            renderCategoryFilters(); renderProducts(); updateCart();
+            tryAutoRate();
+        } catch (e) { /* сервер недоступен — остаются данные по умолчанию из кода */ }
     }
     function exportData() {
         const data = { products, categories, paymentMethods, usdRateRub, rateMode };
@@ -1786,6 +1855,7 @@
         reader.readAsText(file);
     }
     (function loadAllData() {
+        if (API_URL) return;
         try {
             const p = localStorage.getItem('kb_products'); if (p) products = JSON.parse(p);
             const c = localStorage.getItem('kb_categories'); if (c) categories = JSON.parse(c);
@@ -1802,6 +1872,7 @@
     renderProducts();
     updateCart();
     tryAutoRate();
+    loadRemoteData();
     setTimeout(initSlotMachine, 0); // деферируем до момента, когда slotSymbols (const ниже по скрипту) уже инициализирован
     
     // NAV SCROLL
@@ -2093,17 +2164,20 @@
         `;
     }
 
-    function finalizeOrder() {
+    async function finalizeOrder() {
         if (!pendingOrder) return;
         pendingOrder.paymentMethod = paymentMethods.find(m => m.id === selectedPaymentId)?.name || 'Не выбран';
-        pendingOrder.id = 'KB-' + Date.now().toString().slice(-6);
-        pendingOrder.status = ORDER_STATUSES[0];
-        orders.push(pendingOrder);
+        try {
+            const res = await sendOrderToServer(pendingOrder);
+            pendingOrder.id = res.id;
+        } catch (e) {
+            alert('Не получилось отправить заказ (' + e.message + '). Напиши нам в Telegram, мы оформим вручную.');
+            return;
+        }
         cart = [];
         updateCart();
         closeOrderModal();
         showNotification('Заказ ' + pendingOrder.id + ' оформлен. Сертификат на куни уже летит к тебе <3');
-        renderAdminOrders();
         pendingOrder = null;
     }
 
@@ -2111,34 +2185,62 @@
         document.getElementById('orderModal').classList.remove('open');
     }
     
-    // HIDDEN ADMIN
-    // Пароль по умолчанию (поменяй его!): NlxAKIQX@KsuRWD8
-    // Хранится не текстом, а SHA-256 хэшем — его смена делается через саму админку (вкладка Settings)
-    // или вручную заменой DEFAULT_ADMIN_HASH ниже на хэш нового пароля.
-    const DEFAULT_ADMIN_HASH = 'f1d96d0da6d3e9a4608c3f5cabcc8dd6bbb9ee078430d5c55260da54e8cd1e73';
-    async function sha256Hex(str) {
-        const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    // HIDDEN ADMIN — пароль проверяется на сервере, в коде сайта его нет
+    function askPassword() {
+        return new Promise(resolve => {
+            const ov = document.createElement('div');
+            ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:99999;display:flex;align-items:center;justify-content:center;';
+            ov.innerHTML = `<div style="background:var(--bg);border:1px solid var(--border);padding:28px;width:min(340px,90vw);">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:12px;margin-bottom:12px;text-transform:uppercase;">Admin password</div>
+                <input type="password" id="kbPw" autocomplete="current-password" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--border);color:var(--text);margin-bottom:12px;">
+                <div style="display:flex;gap:8px;"><button id="kbPwOk" class="save-btn" style="flex:1;">OK</button><button id="kbPwNo" class="save-btn" style="flex:1;background:transparent;border:1px solid var(--border);color:var(--text);">Cancel</button></div></div>`;
+            document.body.appendChild(ov);
+            const inp = ov.querySelector('#kbPw'); inp.focus();
+            const done = v => { ov.remove(); resolve(v); };
+            ov.querySelector('#kbPwOk').onclick = () => done(inp.value);
+            ov.querySelector('#kbPwNo').onclick = () => done(null);
+            inp.addEventListener('keydown', e => { if (e.key === 'Enter') done(inp.value); if (e.key === 'Escape') done(null); });
+        });
+    }
+    function adminLogout(silent) {
+        adminToken = '';
+        sessionStorage.removeItem('kb_admin_token');
+        document.getElementById('adminModal').classList.remove('open');
+        if (!silent) showNotification('Вышел из админки');
     }
     async function openAdmin() {
-        const password = prompt('Enter admin password:');
-        if (password === null) return;
-        const hash = await sha256Hex(password);
-        const expected = localStorage.getItem('kb_admin_hash') || DEFAULT_ADMIN_HASH;
-        if (hash === expected) {
-            document.getElementById('adminModal').classList.add('open');
-            renderCategoryFilters();
-            renderAdminProducts();
-            renderAdminCategories();
-            renderAdminPaymentList();
-            renderAdminOrders();
-            document.getElementById('settingsRate').value = usdRateRub;
-            document.getElementById('settingsAutoRate').checked = (rateMode === 'auto');
-        } else {
-            alert('Wrong password!');
+        if (!API_URL) { alert('Бэкенд не подключён: впиши адрес воркера в API_URL.'); return; }
+        if (!adminToken) {
+            const pw = await askPassword();
+            if (pw === null) return;
+            try {
+                const r = await api('/login', { method: 'POST', body: { password: pw } });
+                adminToken = r.token;
+                sessionStorage.setItem('kb_admin_token', adminToken);
+            } catch (e) {
+                alert(e.status === 429 ? 'Слишком много попыток. Подожди 15 минут.' : 'Wrong password!');
+                return;
+            }
         }
+        try {
+            orders = (await api('/orders', { auth: true })).orders || [];
+        } catch (e) {
+            if (e.status === 401) { adminLogout(true); return openAdmin(); }
+            alert('Ошибка загрузки заказов: ' + e.message);
+        }
+        document.getElementById('adminModal').classList.add('open');
+        renderCategoryFilters();
+        renderAdminProducts();
+        renderAdminCategories();
+        renderAdminPaymentList();
+        renderAdminOrders();
+        document.getElementById('settingsRate').value = usdRateRub;
+        document.getElementById('settingsAutoRate').checked = (rateMode === 'auto');
+        document.getElementById('settingsTelegram').value = siteSettings.telegram || 'https://t.me/kunibog';
+        document.getElementById('settingsInsta').value = siteSettings.instagram || 'https://www.instagram.com/kunibog.clothing';
+        document.getElementById('settingsHeroImage').value = siteSettings.heroImage || 'art-tee.jpg';
     }
-    
+
     function closeAdmin() {
         document.getElementById('adminModal').classList.remove('open');
     }
@@ -2247,20 +2349,24 @@
             <div style="border: 1px solid var(--border); padding: 15px; margin-bottom: 10px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                     <div>
-                        <strong>${o.id}</strong> — ${o.name}<br>
-                        <span style="color: var(--gray); font-size: 11px;">${o.contact} · ${formatPrice(o.total)} (вкл. доставку ${SHIPPING_RUB}₽) · ${o.paymentMethod || ''}</span>
+                        <strong>${esc(o.id)}</strong> — ${esc(o.name)}<br>
+                        <span style="color: var(--gray); font-size: 11px;">${esc(o.contact)}${o.telegram ? ' · ' + esc(o.telegram) : ''} · ${esc(o.total)}₽ (вкл. доставку ${esc(o.shipping)}₽) · ${esc(o.paymentMethod)}</span><br>
+                        <span style="color: var(--gray); font-size: 11px;">${esc(o.address)}</span><br>
+                        <span style="font-size: 11px;">${o.items.map(i => esc(i.name)).join(', ')}</span>
                     </div>
-                    <select onchange="setOrderStatus('${o.id}', this.value)" style="background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px;">
-                        ${ORDER_STATUSES.map(s => `<option value="${s}" ${s === o.status ? 'selected' : ''}>${s}</option>`).join('')}
+                    <select onchange="setOrderStatus('${esc(o.id)}', this.value)" style="background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px;">
+                        ${ORDER_STATUSES.map(st => `<option value="${st}" ${st === o.status ? 'selected' : ''}>${st}</option>`).join('')}
                     </select>
                 </div>
             </div>
         `).join('');
     }
 
-    function setOrderStatus(id, status) {
+    async function setOrderStatus(id, status) {
         const o = orders.find(x => x.id === id);
         if (o) o.status = status;
+        try { await api('/orders/status', { method: 'POST', auth: true, body: { id, status } }); }
+        catch (e) { alert('Не удалось обновить статус: ' + e.message); }
     }
 
     function openOrderStatusModal() {
@@ -2277,22 +2383,22 @@
         document.getElementById('orderModal').classList.add('open');
     }
 
-    function checkOrderStatus() {
-        const contact = document.getElementById('statusContact').value.trim().toLowerCase();
+    async function checkOrderStatus() {
+        const contact = document.getElementById('statusContact').value.trim();
         const result = document.getElementById('statusResult');
         if (!contact) { result.innerHTML = ''; return; }
-        const matches = orders.filter(o => o.contact.trim().toLowerCase() === contact);
-        if (matches.length === 0) {
-            result.innerHTML = '<p style="color: var(--gray); font-family: \'JetBrains Mono\', monospace; font-size: 12px;">Заказы не найдены.</p>';
-            return;
-        }
-        result.innerHTML = matches.map(o => `
-            <div style="border: 1px solid var(--border); padding: 12px; margin-bottom: 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px;">
-                <strong>${o.id}</strong><br>
-                Статус: <span style="color: var(--accent);">${o.status}</span><br>
-                Сумма: ${formatPrice(o.total)} (вкл. доставку ${SHIPPING_RUB}₽)
-            </div>
-        `).join('');
+        const msg = t => `<p style="color: var(--gray); font-family: 'JetBrains Mono', monospace; font-size: 12px;">${t}</p>`;
+        try {
+            const res = await api('/order-status', { method: 'POST', body: { contact } });
+            if (!res.orders.length) { result.innerHTML = msg('Заказы не найдены.'); return; }
+            result.innerHTML = res.orders.map(o => `
+                <div style="border: 1px solid var(--border); padding: 12px; margin-bottom: 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px;">
+                    <strong>${esc(o.id)}</strong><br>
+                    Статус: <span style="color: var(--accent);">${esc(o.status)}</span><br>
+                    Сумма: ${formatPrice(o.total)} (вкл. доставку ${SHIPPING_RUB}₽)
+                </div>
+            `).join('');
+        } catch (e) { result.innerHTML = msg('Ошибка соединения, попробуй позже.'); }
     }
 
     function renderAdminPaymentList() {
@@ -2340,32 +2446,37 @@
         }
     }
     
-    function saveSettings() {
+    async function saveSettings() {
         const insta = document.getElementById('settingsInsta').value.trim();
         const tg = document.getElementById('settingsTelegram').value.trim();
+        const hero = document.getElementById('settingsHeroImage').value.trim();
         const rate = parseFloat(document.getElementById('settingsRate').value);
         const auto = document.getElementById('settingsAutoRate').checked;
 
-        if (insta) document.querySelectorAll('a[href*="instagram.com"]').forEach(a => a.href = insta);
-        if (tg) document.querySelectorAll('a[href*="t.me/"]').forEach(a => a.href = tg);
-        if (rate > 0) { usdRateRub = rate; localStorage.setItem('kb_usdRate', rate); }
-        rateMode = auto ? 'auto' : 'manual';
-        localStorage.setItem('kb_rateMode', rateMode);
+        siteSettings.instagram = insta;
+        siteSettings.telegram = tg;
+        siteSettings.heroImage = hero;
+        if (rate > 0) siteSettings.usdRate = rate;
+        siteSettings.rateMode = auto ? 'auto' : 'manual';
+        applySettings();
         if (auto) tryAutoRate();
 
-        const newPass = document.getElementById('settingsNewPassword').value.trim();
+        const newPass = document.getElementById('settingsNewPassword').value;
         if (newPass) {
-            sha256Hex(newPass).then(hash => {
-                localStorage.setItem('kb_admin_hash', hash);
-                alert('Пароль админки обновлён. Он хранится как хэш в этом браузере — при переустановке сайта на новый домен/браузер применится пароль по умолчанию из кода, пока ты не зайдёшь и не зададишь новый здесь же.');
-            });
+            if (newPass.length < 10) { alert('Пароль слишком короткий (минимум 10 символов).'); return; }
+            try {
+                await api('/password', { method: 'POST', auth: true, body: { password: newPass } });
+                document.getElementById('settingsNewPassword').value = '';
+                alert('Пароль обновлён. Он работает на всех устройствах и браузерах.');
+            } catch (e) { alert('Не удалось сменить пароль: ' + e.message); return; }
         }
 
+        saveAllData();
         renderProducts();
         updateCart();
         alert('Settings saved!');
     }
-    
+
     // SLOT MACHINE — ВЫИГРАЙ КУНИ
     const SLOT_COOLDOWN_MS = (4 * 24 + 20) * 60 * 60 * 1000; // 4 дня 20 часов
     let slotNextSpinAt = 0;
