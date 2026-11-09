@@ -1390,7 +1390,7 @@
             <span class="filled glitch" data-text="KUNI">KUNI</span>
             <span class="outline">BOG</span>
         </h1>
-        <p class="hero-sub">Post-soviet luxury // Est. 2027</p>
+        <p class="hero-sub" id="heroSub">Post-soviet luxury // Est. 2027</p>
     </div>
     <div class="hero-badge">
         NEW<br>DROP<br>2027
@@ -1399,7 +1399,7 @@
         <img id="heroImg" src="art-tee.jpg" alt="KUNIBOG">
     </div>
     <div class="marquee">
-        <div class="marquee-content">
+        <div class="marquee-content" id="marqueeContent">
             <span>NEW DROP — SCAM COLLECTION</span>
             <span>///</span>
             <span>ДОСТАВКА 777₽ ПО РФ</span>
@@ -1432,7 +1432,7 @@
 
 <!-- MANIFESTO -->
 <section class="manifesto" id="about">
-    <p class="manifesto-text">
+    <p class="manifesto-text" id="manifestoText">
         Мы не продаем одежду. Мы продаем <em>идентичность</em> для тех, кто устал от масс-маркета. Каждый шов — это <em>манифест</em>, каждый принт — <em>провокация</em>.
     </p>
 </section>
@@ -1480,6 +1480,7 @@
     </div>
     <div class="cart-items" id="cartItems"></div>
     <div class="cart-footer">
+        <div id="cartDiscount" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);margin-bottom:8px;"></div>
         <div class="cart-total">
             <span>Total:</span>
             <span id="cartTotal">0₽</span>
@@ -1618,6 +1619,19 @@
                 <label>Картинка на главной (hero): имя файла из репозитория или ссылка</label>
                 <input type="text" id="settingsHeroImage" placeholder="art-tee.jpg">
             </div>
+            <h3 style="margin: 25px 0 15px; color: var(--accent);">Тексты на сайте</h3>
+            <div class="form-group">
+                <label>Подпись под KUNIBOG на главной</label>
+                <input type="text" id="settingsHeroSub">
+            </div>
+            <div class="form-group">
+                <label>Манифест (слова в *звёздочках* подсвечиваются розовым курсивом)</label>
+                <textarea id="settingsManifesto" rows="5"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Бегущая строка (каждая фраза с новой строки)</label>
+                <textarea id="settingsMarquee" rows="4"></textarea>
+            </div>
             <div class="form-group">
                 <label>Новый пароль админки (мин. 10 символов, пусто = не менять)</label>
                 <input type="password" id="settingsNewPassword" autocomplete="new-password" placeholder="новый сложный пароль">
@@ -1747,7 +1761,7 @@
         if (opts.auth) headers['Authorization'] = 'Bearer ' + adminToken;
         const r = await fetch(API_URL + path, { method: opts.method || 'GET', headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
         let j = null; try { j = await r.json(); } catch (e) {}
-        if (!r.ok) { const err = new Error((j && j.error) || ('HTTP ' + r.status)); err.status = r.status; throw err; }
+        if (!r.ok) { const err = new Error((j && j.error) || ('HTTP ' + r.status)); err.status = r.status; if (j && j.retryIn) err.retryIn = j.retryIn; throw err; }
         return j;
     }
     function esc(v) {
@@ -1758,7 +1772,7 @@
         return api('/order', { method: 'POST', body: {
             name: order.name, contact: order.contact, address: order.address, telegram: order.telegram,
             items: order.items.map(i => ({ name: i.name, price: i.price })),
-            shipping: order.shipping, total: order.total, paymentMethod: order.paymentMethod
+            shipping: order.shipping, total: order.total, paymentMethod: order.paymentMethod, coupon: order.coupon || ''
         }});
     }
 
@@ -1807,7 +1821,43 @@
             }
         }, 400);
     }
+    const DEFAULT_TEXTS = {
+        heroSub: 'Post-soviet luxury // Est. 2027',
+        manifesto: 'Мы не продаем одежду. Мы продаем *идентичность* для тех, кто устал от масс-маркета. Каждый шов — это *манифест*, каждый принт — *провокация*.',
+        marquee: 'NEW DROP — SCAM COLLECTION\nДОСТАВКА 777₽ ПО РФ\nLIMITED EDITION'
+    };
+    function applyTexts() {
+        const st = siteSettings;
+        const sub = document.getElementById('heroSub');
+        if (sub) sub.textContent = st.heroSub || DEFAULT_TEXTS.heroSub;
+        const man = document.getElementById('manifestoText');
+        if (man) man.innerHTML = esc(st.manifesto || DEFAULT_TEXTS.manifesto).replace(/\*([^*]+)\*/g, '<em>$1</em>');
+        const mq = document.getElementById('marqueeContent');
+        if (mq) {
+            let items = (st.marquee || DEFAULT_TEXTS.marquee).split('\n').map(x => x.trim()).filter(Boolean);
+            if (!items.length) items = DEFAULT_TEXTS.marquee.split('\n');
+            while (items.length < 3) items = items.concat(items);
+            const one = items.map(t => `<span>${esc(t)}</span><span>///</span>`).join('');
+            mq.innerHTML = one + one; // дважды — чтобы лента крутилась без разрыва
+        }
+    }
+
+    // ====== КУПОН ИЗ КАЗИНО ======
+    function getCoupon() {
+        try { const c = JSON.parse(localStorage.getItem('kb_coupon') || 'null'); return c && c.code ? c : null; } catch (e) { return null; }
+    }
+    function setCoupon(c) {
+        try { if (c) localStorage.setItem('kb_coupon', JSON.stringify(c)); else localStorage.removeItem('kb_coupon'); } catch (e) {}
+    }
+    function calcTotals() {
+        const subtotal = cart.reduce((sum, item) => sum + item.price, 0);
+        const coupon = getCoupon();
+        const discount = coupon ? Math.round(subtotal * coupon.percent / 100) : 0;
+        return { subtotal, discount, coupon, shipping: SHIPPING_RUB, total: subtotal - discount + SHIPPING_RUB };
+    }
+
     function applySettings() {
+        applyTexts();
         const st = siteSettings;
         if (st.usdRate > 0) usdRateRub = st.usdRate;
         if (st.rateMode) rateMode = st.rateMode;
@@ -2066,8 +2116,10 @@
             `).join('');
         }
         
-        const total = cart.reduce((sum, item) => sum + item.price, 0);
-        document.getElementById('cartTotal').innerHTML = formatPrice(total);
+        const t = calcTotals();
+        document.getElementById('cartTotal').innerHTML = formatPrice(t.subtotal - t.discount);
+        const dEl = document.getElementById('cartDiscount');
+        if (dEl) dEl.textContent = (t.discount > 0 && cart.length) ? `Скидка ${t.coupon.percent}% (${t.coupon.code}): −${t.discount}₽` : '';
     }
     
     function toggleCart() {
@@ -2086,8 +2138,8 @@
     // ORDER FLOW
     function openOrderStepForm() {
         selectedPaymentId = null;
-        const subtotal = cart.reduce((sum, item) => sum + item.price, 0);
-        const total = subtotal + SHIPPING_RUB;
+        const t = calcTotals();
+        const subtotal = t.subtotal, total = t.total;
         document.getElementById('orderContent').innerHTML = `
             <div class="order-title">Оформление заказа</div>
             <div class="order-step-label">Шаг 1 / 2 — Данные получателя</div>
@@ -2109,6 +2161,7 @@
             </div>
             <div class="order-gift-note">🎁 При оформлении заказа — сертификат на куни в подарок &lt;3</div>
             <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--gray); margin-bottom:4px;">Товары: ${rubOnly(subtotal)} · Доставка: ${rubOnly(SHIPPING_RUB)}</div>
+            ${t.discount > 0 ? `<div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent); margin-bottom:4px;">Скидка ${t.coupon.percent}% на первый заказ (${esc(t.coupon.code)}): −${rubOnly(t.discount)}</div>` : ''}
             <div style="font-family:'JetBrains Mono',monospace; font-size:13px; margin-bottom:15px;">Итого: ${formatPrice(total)}</div>
             <button class="save-btn" style="width:100%;" onclick="submitOrderForm()">Продолжить к оплате</button>
         `;
@@ -2126,8 +2179,8 @@
             return;
         }
 
-        const subtotal = cart.reduce((s, i) => s + i.price, 0);
-        pendingOrder = { name, contact, address, telegram, items: [...cart], subtotal, shipping: SHIPPING_RUB, total: subtotal + SHIPPING_RUB, date: new Date().toISOString() };
+        const t = calcTotals();
+        pendingOrder = { name, contact, address, telegram, items: [...cart], subtotal: t.subtotal, discount: t.discount, coupon: t.coupon ? t.coupon.code : '', shipping: SHIPPING_RUB, total: t.total, date: new Date().toISOString() };
         openOrderStepPayment();
     }
 
@@ -2171,9 +2224,19 @@
             const res = await sendOrderToServer(pendingOrder);
             pendingOrder.id = res.id;
         } catch (e) {
+            if (e.message === 'bad_coupon' || e.message === 'not_first') {
+                setCoupon(null);
+                updateCart();
+                closeOrderModal();
+                alert(e.message === 'not_first'
+                    ? 'Скидка действует только на первый заказ. Купон убран — оформи заказ заново.'
+                    : 'Купон недействителен или уже использован. Скидка убрана — оформи заказ заново.');
+                return;
+            }
             alert('Не получилось отправить заказ (' + e.message + '). Напиши нам в Telegram, мы оформим вручную.');
             return;
         }
+        setCoupon(null); // купон одноразовый
         cart = [];
         updateCart();
         closeOrderModal();
@@ -2239,6 +2302,9 @@
         document.getElementById('settingsTelegram').value = siteSettings.telegram || 'https://t.me/kunibog';
         document.getElementById('settingsInsta').value = siteSettings.instagram || 'https://www.instagram.com/kunibog.clothing';
         document.getElementById('settingsHeroImage').value = siteSettings.heroImage || 'art-tee.jpg';
+        document.getElementById('settingsHeroSub').value = siteSettings.heroSub || DEFAULT_TEXTS.heroSub;
+        document.getElementById('settingsManifesto').value = siteSettings.manifesto || DEFAULT_TEXTS.manifesto;
+        document.getElementById('settingsMarquee').value = siteSettings.marquee || DEFAULT_TEXTS.marquee;
     }
 
     function closeAdmin() {
@@ -2350,7 +2416,7 @@
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                     <div>
                         <strong>${esc(o.id)}</strong> — ${esc(o.name)}<br>
-                        <span style="color: var(--gray); font-size: 11px;">${esc(o.contact)}${o.telegram ? ' · ' + esc(o.telegram) : ''} · ${esc(o.total)}₽ (вкл. доставку ${esc(o.shipping)}₽) · ${esc(o.paymentMethod)}</span><br>
+                        <span style="color: var(--gray); font-size: 11px;">${esc(o.contact)}${o.telegram ? ' · ' + esc(o.telegram) : ''} · ${esc(o.total)}₽ (вкл. доставку ${esc(o.shipping)}₽)${o.discount ? ' · скидка −' + esc(o.discount) + '₽ (' + esc(o.coupon) + ')' : ''} · ${esc(o.paymentMethod)}</span><br>
                         <span style="color: var(--gray); font-size: 11px;">${esc(o.address)}</span><br>
                         <span style="font-size: 11px;">${o.items.map(i => esc(i.name)).join(', ')}</span>
                     </div>
@@ -2456,6 +2522,9 @@
         siteSettings.instagram = insta;
         siteSettings.telegram = tg;
         siteSettings.heroImage = hero;
+        siteSettings.heroSub = document.getElementById('settingsHeroSub').value.trim();
+        siteSettings.manifesto = document.getElementById('settingsManifesto').value.trim();
+        siteSettings.marquee = document.getElementById('settingsMarquee').value.trim();
         if (rate > 0) siteSettings.usdRate = rate;
         siteSettings.rateMode = auto ? 'auto' : 'manual';
         applySettings();
@@ -2494,6 +2563,7 @@
     const slotKeys = ['heart','peach','flame','diamond'];
 
     function initSlotMachine() {
+        slotNextSpinAt = Number(localStorage.getItem('kb_nextspin')) || 0;
         setReelIcon(1, 'six');
         setReelIcon(2, 'six');
         setReelIcon(3, 'six');
@@ -2515,13 +2585,30 @@
         return !slotIsSpinning && Date.now() >= slotNextSpinAt;
     }
 
-    function spinSlot() {
+    async function spinSlot() {
         if (!canSpinNow()) return;
+        if (!API_URL) { alert('Казино временно недоступно.'); return; }
         slotIsSpinning = true;
         const btn = document.getElementById('slotBtn');
         btn.disabled = true;
-        [1,2,3].forEach(n => document.getElementById('reel' + n).classList.add('spinning'));
 
+        let res;
+        try {
+            res = await api('/spin', { method: 'POST' });
+        } catch (e) {
+            slotIsSpinning = false;
+            if (e.status === 429) {
+                slotNextSpinAt = Date.now() + (e.retryIn || SLOT_COOLDOWN_MS / 1000) * 1000;
+                try { localStorage.setItem('kb_nextspin', String(slotNextSpinAt)); } catch (x) {}
+                showSlotMessage('Ты уже крутил(а). Следующий спин позже 🔥');
+            } else {
+                showSlotMessage('Казино сломалось, попробуй позже');
+            }
+            updateSlotTimerLoop();
+            return;
+        }
+
+        [1,2,3].forEach(n => document.getElementById('reel' + n).classList.add('spinning'));
         let ticks = 0;
         const spinInterval = setInterval(() => {
             [1,2,3].forEach(n => setReelIcon(n, slotKeys[Math.floor(Math.random() * slotKeys.length)]));
@@ -2534,17 +2621,27 @@
                 });
                 slotIsSpinning = false;
                 slotNextSpinAt = Date.now() + SLOT_COOLDOWN_MS;
-                showSlotWin();
+                try { localStorage.setItem('kb_nextspin', String(slotNextSpinAt)); } catch (x) {}
+                setCoupon({ code: res.code, percent: res.percent });
+                updateCart();
+                showSlotWin(res.code, res.percent);
                 updateSlotTimerLoop();
             }
         }, 90);
     }
 
-    function showSlotWin() {
+    function showSlotMessage(text) {
         const popup = document.getElementById('slotWinPopup');
-        popup.innerHTML = '666 — ВЫИГРАЙ КУНИ: СКИДКА 6% НА ПЕРВЫЙ ЗАКАЗ 🔥';
+        popup.textContent = text;
         popup.classList.add('show');
         setTimeout(() => popup.classList.remove('show'), 5000);
+    }
+
+    function showSlotWin(code, percent) {
+        const popup = document.getElementById('slotWinPopup');
+        popup.textContent = `666 — ВЫИГРАЙ КУНИ: СКИДКА ${percent}% НА ПЕРВЫЙ ЗАКАЗ 🔥 Код ${code} уже применён в корзине`;
+        popup.classList.add('show');
+        setTimeout(() => popup.classList.remove('show'), 8000);
     }
 
     function updateSlotTimerLoop() {
