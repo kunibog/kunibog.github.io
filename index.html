@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru" data-theme="light">
+<html lang="ru" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -38,11 +38,11 @@
         font-family: 'Inter', sans-serif;
         overflow-x: hidden;
         transition: background 0.4s, color 0.4s;
-        cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24'%3E%3Cg fill='%23ff2d78' stroke='%230a0a0a' stroke-width='1'%3E%3Crect x='10' y='1' width='4' height='21'/%3E%3Crect x='3' y='14' width='18' height='4'/%3E%3C/g%3E%3C/svg%3E") 12 3, auto;
+        cursor: url("cursor-cross.png") 24 6, auto;
     }
 
     a, button, .product-card, .category-btn, input, textarea, select, .theme-toggle, .cart-icon, [onclick] {
-        cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24'%3E%3Cg fill='%23ff2d78' stroke='%230a0a0a' stroke-width='1'%3E%3Crect x='10' y='1' width='4' height='21'/%3E%3Crect x='3' y='14' width='18' height='4'/%3E%3C/g%3E%3C/svg%3E") 12 3, pointer;
+        cursor: url("cursor-cross.png") 24 6, pointer;
     }
 
     /* GLITCH */
@@ -182,6 +182,19 @@
         transform: rotate(180deg) scale(1.08);
         box-shadow: 0 0 20px rgba(255,45,120,0.5);
     }
+
+    .toggle-icon {
+        width: 26px;
+        height: 26px;
+        object-fit: contain;
+        pointer-events: none;
+        user-select: none;
+        transition: transform 0.3s;
+    }
+    .theme-toggle:hover .toggle-icon { transform: rotate(-180deg); }
+    .slot-toggle:hover .toggle-icon,
+    .sound-toggle:hover .toggle-icon { transform: scale(1.15); }
+    .sound-toggle.off .toggle-icon { opacity: 0.6; }
     
     /* NAV */
     nav {
@@ -376,6 +389,50 @@
         to { transform: rotate(360deg); }
     }
     
+    /* ДУДЛЫ ПО КРАЯМ HERO — заполняют пустые поля в стиле сайта (рукописная линия + звёзды) */
+    .hero-doodle {
+        position: absolute;
+        top: 0;
+        height: 100%;
+        width: 14vw;
+        max-width: 220px;
+        min-width: 90px;
+        pointer-events: none;
+        z-index: 1;
+        opacity: 0;
+        animation: doodleFadeIn 1.5s ease 1.1s forwards;
+    }
+    .hero-doodle.left { left: 0; }
+    .hero-doodle.right { right: 0; transform: scaleX(-1); }
+    .hero-doodle svg { width: 100%; height: 100%; }
+    .hero-doodle path {
+        fill: none;
+        stroke: var(--accent);
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-dasharray: 900;
+        stroke-dashoffset: 900;
+        animation: doodleDraw 3.5s ease forwards 1.3s;
+        opacity: 0.55;
+    }
+    .hero-doodle .doodle-star {
+        fill: var(--accent);
+        opacity: 0;
+        transform-origin: center;
+        animation: starTwinkle 2.6s ease-in-out infinite;
+    }
+    .hero-doodle .doodle-star.s2 { animation-delay: 0.9s; }
+    .hero-doodle .doodle-star.s3 { animation-delay: 1.7s; }
+    @keyframes doodleFadeIn { to { opacity: 1; } }
+    @keyframes doodleDraw { to { stroke-dashoffset: 0; } }
+    @keyframes starTwinkle {
+        0%, 100% { opacity: 0; transform: scale(0.6) rotate(0deg); }
+        50% { opacity: 0.9; transform: scale(1) rotate(25deg); }
+    }
+    @media (max-width: 1100px) {
+        .hero-doodle { display: none; }
+    }
+
     .hero-image {
         position: absolute;
         right: 8%;
@@ -1579,18 +1636,18 @@
     <div class="scanline"></div>
 
 <!-- THEME TOGGLE -->
-<button class="theme-toggle" onclick="toggleTheme()" title="Change theme">
-    <span id="themeIcon">🌙</span>
+<button class="theme-toggle" id="themeToggleBtn" onclick="toggleTheme()" title="Сменить тему">
+    <img id="themeIcon" class="toggle-icon" src="icon-sun.png" alt="Тема">
 </button>
 
-<!-- SLOT TOGGLE (незаметная кнопка с сердечком рядом с переключателем темы) -->
+<!-- SLOT TOGGLE (казино с промокодом на 6%) -->
 <button class="slot-toggle" id="slotToggleBtn" onclick="toggleSlotMachine()" title="???">
-    <svg viewBox="0 0 24 24" fill="#ff2d78"><path d="M12 21s-7.5-4.6-10-9.3C.5 8 2.3 4 6.2 4c2 0 3.6 1.2 4.3 2.9C11.2 5.2 12.8 4 14.8 4c3.9 0 5.7 4 4.2 7.7C19.5 16.4 12 21 12 21z"/></svg>
+    <img class="toggle-icon" src="icon-casino.png" alt="">
 </button>
 
 <!-- SOUND TOGGLE (звуки интерфейса: вкл/выкл) -->
 <button class="sound-toggle" id="soundToggleBtn" onclick="toggleSound()" title="Звук вкл/выкл">
-    <span id="soundIcon">🔊</span>
+    <img id="soundIcon" class="toggle-icon" src="icon-sound-on.png" alt="Звук">
 </button>
 
 <!-- SLOT MACHINE -->
@@ -1624,6 +1681,22 @@
 <section class="hero">
     <div class="hero-bg"></div>
     <div class="hero-noise"></div>
+    <div class="hero-doodle left" aria-hidden="true">
+        <svg viewBox="0 0 120 800" xmlns="http://www.w3.org/2000/svg">
+            <path d="M60 40 C20 110, 95 160, 50 230 S15 340, 65 400 S100 500, 55 580 S25 690, 60 760"/>
+            <path class="doodle-star s1" d="M30 120 l4 10 l10 4 l-10 4 l-4 10 l-4 -10 l-10 -4 l10 -4 z"/>
+            <path class="doodle-star s2" d="M85 460 l3 8 l8 3 l-8 3 l-3 8 l-3 -8 l-8 -3 l8 -3 z"/>
+            <path class="doodle-star s3" d="M35 650 l3 8 l8 3 l-8 3 l-3 8 l-3 -8 l-8 -3 l8 -3 z"/>
+        </svg>
+    </div>
+    <div class="hero-doodle right" aria-hidden="true">
+        <svg viewBox="0 0 120 800" xmlns="http://www.w3.org/2000/svg">
+            <path d="M60 40 C20 110, 95 160, 50 230 S15 340, 65 400 S100 500, 55 580 S25 690, 60 760"/>
+            <path class="doodle-star s1" d="M30 120 l4 10 l10 4 l-10 4 l-4 10 l-4 -10 l-10 -4 l10 -4 z"/>
+            <path class="doodle-star s2" d="M85 460 l3 8 l8 3 l-8 3 l-3 8 l-3 -8 l-8 -3 l8 -3 z"/>
+            <path class="doodle-star s3" d="M35 650 l3 8 l8 3 l-8 3 l-3 8 l-3 -8 l-8 -3 l8 -3 z"/>
+        </svg>
+    </div>
     <div class="hero-content">
         <h1 class="hero-title">
             <span class="filled glitch" data-text="KUNI">KUNI</span>
@@ -1776,6 +1849,7 @@
             <button class="admin-tab" onclick="switchTab('promos')">Promo</button>
             <button class="admin-tab" onclick="switchTab('payment')">Payment</button>
             <button class="admin-tab" onclick="switchTab('settings')">Settings</button>
+            <button class="admin-tab" onclick="switchTab('analytics')">Analytics</button>
         </div>
         
         <div class="admin-section active" id="products">
@@ -1844,7 +1918,10 @@
         </div>
         
         <div class="admin-section" id="orders">
-            <h3 style="margin-bottom: 20px; color: var(--accent);">Recent Orders</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom: 20px;">
+                <h3 style="color: var(--accent); margin:0;">Recent Orders</h3>
+                <button class="save-btn" style="background:transparent;border:1px solid var(--accent);color:var(--accent);" onclick="clearAllOrders()">Очистить все заказы</button>
+            </div>
             <div id="ordersList">
                 <p style="color: var(--gray); font-family: 'JetBrains Mono', monospace; font-size: 12px;">No orders yet.</p>
             </div>
@@ -1923,6 +2000,10 @@
                 <input type="text" id="settingsInsta" value="https://www.instagram.com/kunibog.clothing">
             </div>
             <div class="form-group">
+                <label>Контактная почта (для mailto-ссылки)</label>
+                <input type="email" id="settingsEmail" value="hello@kunibog.ru">
+            </div>
+            <div class="form-group">
                 <label>Курс USD → RUB (ручной)</label>
                 <input type="number" id="settingsRate" value="90">
             </div>
@@ -1957,6 +2038,27 @@
             <p style="color: var(--gray); font-size: 12px; margin-bottom: 15px;">Всё хранится на сервере и одинаково на всех устройствах. JSON — это просто резервная копия на всякий случай.</p>
             <button class="save-btn" onclick="exportData()">Export JSON</button>
             <input type="file" id="importFile" accept="application/json" style="margin-top:10px;" onchange="importData(event)">
+        </div>
+
+        <div class="admin-section" id="analytics">
+            <h3 style="margin-bottom: 20px; color: var(--accent);">Аналитика</h3>
+            <div id="statsBox" style="font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.8;margin-bottom:20px;">Загрузка...</div>
+            <button class="save-btn" style="background:transparent;border:1px solid var(--border);color:var(--text);" onclick="loadStats()">Обновить</button>
+
+            <h3 style="margin: 35px 0 10px; color: var(--accent);">Короткие ссылки</h3>
+            <p style="color: var(--gray); font-size: 12px; margin-bottom: 15px;">Создавай свои короткие ссылки для рекламы и постов — переходы по ним считаются отдельно от общего трафика сайта.</p>
+            <div class="admin-grid2">
+                <div class="form-group">
+                    <label>Куда ведёт (полный URL)</label>
+                    <input type="text" id="newLinkTarget" placeholder="https://t.me/kunibog">
+                </div>
+                <div class="form-group">
+                    <label>Код (необязательно, латиницей)</label>
+                    <input type="text" id="newLinkCode" placeholder="promo1">
+                </div>
+            </div>
+            <button class="save-btn" onclick="createShortLink()">Создать ссылку</button>
+            <div id="adminLinksList" style="margin-top:20px;"></div>
         </div>
     </div>
 </div>
@@ -2078,6 +2180,31 @@
         let j = null; try { j = await r.json(); } catch (e) {}
         if (!r.ok) { const err = new Error((j && j.error) || ('HTTP ' + r.status)); err.status = r.status; if (j && j.retryIn) err.retryIn = j.retryIn; throw err; }
         return j;
+    }
+    // ====== АНАЛИТИКА: лёгкий маячок визитов/кликов на воркер (не требует куки/авторизации) ======
+    function track(event, label) {
+        if (!API_URL) return;
+        try {
+            const body = JSON.stringify({ event: event, label: label || '', path: location.pathname });
+            if (navigator.sendBeacon) {
+                navigator.sendBeacon(API_URL + '/track', new Blob([body], { type: 'application/json' }));
+            } else {
+                fetch(API_URL + '/track', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body, keepalive: true }).catch(function () {});
+            }
+        } catch (e) {}
+    }
+    function trackClick(el) {
+        var label = '';
+        if (el.closest('.product-card')) label = 'product_card';
+        else if (el.id === 'slotBtn') label = 'casino_spin';
+        else if (el.id === 'slotToggleBtn') label = 'casino_open';
+        else if (el.matches('a[href*="t.me/"]')) label = 'telegram';
+        else if (el.matches('a[href*="instagram.com"]')) label = 'instagram';
+        else if (el.classList.contains('category-btn')) label = 'category_filter';
+        else if (el.classList.contains('checkout-btn')) label = 'checkout';
+        else if (el.closest('.cart-icon')) label = 'cart_open';
+        else return;
+        track('click', label);
     }
     function esc(v) {
         return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -2261,6 +2388,7 @@
         if (st.rateMode) rateMode = st.rateMode;
         if (st.instagram) document.querySelectorAll('a[href*="instagram.com"]').forEach(a => a.href = st.instagram);
         if (st.telegram) document.querySelectorAll('a[href*="t.me/"]').forEach(a => a.href = st.telegram);
+        if (st.email) document.querySelectorAll('a[href^="mailto:"]').forEach(a => a.href = 'mailto:' + st.email);
         if (st.heroImage) { const h = document.getElementById('heroImg'); if (h) h.src = st.heroImage; }
     }
     async function loadRemoteData() {
@@ -2321,6 +2449,7 @@
     updateCart();
     tryAutoRate();
     loadRemoteData();
+    track('visit');
     setTimeout(initSlotMachine, 0); // деферируем до момента, когда slotSymbols (const ниже по скрипту) уже инициализирован
     
     // NAV SCROLL
@@ -2337,13 +2466,14 @@
     function toggleTheme() {
         const html = document.documentElement;
         const icon = document.getElementById('themeIcon');
-        if (html.getAttribute('data-theme') === 'light') {
-            html.setAttribute('data-theme', 'dark');
-            icon.textContent = '☀️';
-        } else {
+        if (html.getAttribute('data-theme') === 'dark') {
             html.setAttribute('data-theme', 'light');
-            icon.textContent = '🌙';
+            icon.src = 'icon-moon.png';
+        } else {
+            html.setAttribute('data-theme', 'dark');
+            icon.src = 'icon-sun.png';
         }
+        track('click', 'theme_toggle');
     }
     
     // CATEGORY FILTERS (dynamic, built from admin-managed categories[])
@@ -2762,6 +2892,7 @@
         document.getElementById('settingsAutoRate').checked = (rateMode === 'auto');
         document.getElementById('settingsTelegram').value = siteSettings.telegram || 'https://t.me/kunibog';
         document.getElementById('settingsInsta').value = siteSettings.instagram || 'https://www.instagram.com/kunibog.clothing';
+        document.getElementById('settingsEmail').value = siteSettings.email || 'hello@kunibog.ru';
         document.getElementById('settingsHeroImage').value = siteSettings.heroImage || 'art-tee.jpg';
         document.getElementById('settingsHeroSub').value = siteSettings.heroSub || DEFAULT_TEXTS.heroSub;
         document.getElementById('settingsManifesto').value = siteSettings.manifesto || DEFAULT_TEXTS.manifesto;
@@ -2778,6 +2909,64 @@
         
         event.target.classList.add('active');
         document.getElementById(tabName).classList.add('active');
+        if (tabName === 'analytics') { loadStats(); loadShortLinks(); }
+    }
+
+    // ====== АНАЛИТИКА (вкладка в админке) ======
+    async function loadStats() {
+        const box = document.getElementById('statsBox');
+        if (!box) return;
+        if (!API_URL) { box.textContent = 'Бэкенд не подключён.'; return; }
+        box.textContent = 'Загрузка...';
+        try {
+            const s = await api('/stats', { auth: true });
+            const byDay = s.days || {};
+            const dates = Object.keys(byDay).sort().reverse().slice(0, 14);
+            const byLabel = s.clicksByLabel || {};
+            box.innerHTML =
+                '<div>Всего визитов: <strong style="color:var(--accent)">' + (s.totalVisits || 0) + '</strong></div>' +
+                '<div>Всего кликов: <strong style="color:var(--accent)">' + (s.totalClicks || 0) + '</strong></div>' +
+                '<h4 style="margin:18px 0 8px;color:var(--text);">По дням (последние 14)</h4>' +
+                (dates.length ? dates.map(d => '<div>' + d + ': визиты ' + (byDay[d].visits || 0) + ', клики ' + (byDay[d].clicks || 0) + '</div>').join('') : '<div style="color:var(--gray)">Нет данных.</div>') +
+                '<h4 style="margin:18px 0 8px;color:var(--text);">Клики по событиям</h4>' +
+                (Object.keys(byLabel).length ? Object.entries(byLabel).sort((a, b) => b[1] - a[1]).map(([k, v]) => '<div>' + esc(k) + ': ' + v + '</div>').join('') : '<div style="color:var(--gray)">Нет данных.</div>');
+        } catch (e) { box.textContent = 'Ошибка загрузки: ' + e.message; }
+    }
+
+    async function createShortLink() {
+        const target = document.getElementById('newLinkTarget').value.trim();
+        const code = document.getElementById('newLinkCode').value.trim();
+        if (!target) { alert('Укажи, куда ведёт ссылка.'); return; }
+        try {
+            const r = await api('/links', { method: 'POST', auth: true, body: { target: target, code: code } });
+            document.getElementById('newLinkTarget').value = '';
+            document.getElementById('newLinkCode').value = '';
+            alert('Готово: ' + API_URL + '/r/' + r.code);
+            loadShortLinks();
+        } catch (e) { alert('Не удалось создать ссылку: ' + e.message); }
+    }
+
+    async function loadShortLinks() {
+        const list = document.getElementById('adminLinksList');
+        if (!list) return;
+        if (!API_URL) { list.innerHTML = ''; return; }
+        try {
+            const r = await api('/links', { auth: true });
+            const links = r.links || [];
+            list.innerHTML = links.length ? links.map(l =>
+                '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid var(--border);margin-bottom:8px;gap:10px;flex-wrap:wrap;">' +
+                    '<div><strong>' + API_URL + '/r/' + esc(l.code) + '</strong><br>' +
+                    '<span style="color:var(--gray);font-size:11px;word-break:break-all;">→ ' + esc(l.target) + ' · переходов: ' + (l.clicks || 0) + '</span></div>' +
+                    '<button onclick="deleteShortLink(\'' + esc(l.code) + '\')" style="background: var(--accent); color: #fff; border: none; padding: 5px 10px; cursor: pointer; font-size: 12px;">Delete</button>' +
+                '</div>'
+            ).join('') : '<p style="color:var(--gray);font-size:12px;">Пока нет ссылок.</p>';
+        } catch (e) { list.innerHTML = '<p style="color:var(--gray);font-size:12px;">Ошибка загрузки.</p>'; }
+    }
+
+    async function deleteShortLink(code) {
+        if (!confirm('Удалить короткую ссылку ' + code + '?')) return;
+        try { await api('/links/delete', { method: 'POST', auth: true, body: { code: code } }); loadShortLinks(); }
+        catch (e) { alert('Ошибка: ' + e.message); }
     }
     
     function renderAdminProducts() {
@@ -3066,12 +3255,31 @@
                         <span style="color: var(--gray); font-size: 11px;">${esc(o.address)}</span><br>
                         <span style="font-size: 11px;">${o.items.map(i => esc(i.name)).join(', ')}</span>
                     </div>
-                    <select onchange="setOrderStatus('${esc(o.id)}', this.value)" style="background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px;">
-                        ${ORDER_STATUSES.map(st => `<option value="${st}" ${st === o.status ? 'selected' : ''}>${st}</option>`).join('')}
-                    </select>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <select onchange="setOrderStatus('${esc(o.id)}', this.value)" style="background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px;">
+                            ${ORDER_STATUSES.map(st => `<option value="${st}" ${st === o.status ? 'selected' : ''}>${st}</option>`).join('')}
+                        </select>
+                        <button onclick="deleteOrder('${esc(o.id)}')" style="background: var(--accent); color: #fff; border: none; padding: 6px 10px; cursor: pointer; font-size: 12px;">Delete</button>
+                    </div>
                 </div>
             </div>
         `).join('');
+    }
+
+    async function deleteOrder(id) {
+        if (!confirm('Удалить этот заказ без возможности восстановления?')) return;
+        orders = orders.filter(o => o.id !== id);
+        renderAdminOrders();
+        try { await api('/orders/delete', { method: 'POST', auth: true, body: { id: id } }); }
+        catch (e) { alert('Не удалось удалить на сервере: ' + e.message); }
+    }
+
+    async function clearAllOrders() {
+        if (!confirm('Удалить ВСЕ заказы (включая тестовые) без возможности восстановления?')) return;
+        orders = [];
+        renderAdminOrders();
+        try { await api('/orders/clear', { method: 'POST', auth: true }); }
+        catch (e) { alert('Не удалось очистить на сервере: ' + e.message); }
     }
 
     async function setOrderStatus(id, status) {
@@ -3167,6 +3375,7 @@
 
         siteSettings.instagram = insta;
         siteSettings.telegram = tg;
+        siteSettings.email = document.getElementById('settingsEmail').value.trim();
         siteSettings.heroImage = hero;
         siteSettings.heroSub = document.getElementById('settingsHeroSub').value.trim();
         siteSettings.manifesto = document.getElementById('settingsManifesto').value.trim();
@@ -3424,13 +3633,14 @@
 
     function updateSoundIcon() {
         const on = Sound.isOn();
-        document.getElementById('soundIcon').textContent = on ? '🔊' : '🔇';
+        document.getElementById('soundIcon').src = on ? 'icon-sound-on.png' : 'icon-sound-off.png';
         document.getElementById('soundToggleBtn').classList.toggle('off', !on);
     }
     function toggleSound() {
         Sound.set(!Sound.isOn());
         updateSoundIcon();
         if (Sound.isOn()) Sound.click();
+        track('click', 'sound_toggle');
     }
     updateSoundIcon();
 
@@ -3439,6 +3649,7 @@
         const el = e.target && e.target.closest ? e.target.closest('a, button, .product-card, .category-btn, .gallery-dot, .order-pay-option, [onclick], select, input[type=checkbox]') : null;
         if (!el || el.closest('.hidden-admin-trigger') || el.id === 'soundToggleBtn') return;
         Sound.click();
+        trackClick(el);
     }, true);
 
     // ввод текста: печатная машинка
