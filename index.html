@@ -1334,6 +1334,96 @@
         .modal-content { grid-template-columns: 1fr; }
         .footer-links { flex-wrap: wrap; }
     }
+
+    /* REEL — анимация между бегущей строкой и SHOP */
+    .reel { padding: 70px 40px 0; }
+    .reel-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 22px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+    }
+    .reel-label { display: flex; align-items: center; gap: 10px; color: var(--gray); }
+    .reel-dot {
+        width: 7px; height: 7px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 10px var(--accent);
+        animation: reelBlink 1.2s steps(1) infinite;
+    }
+    @keyframes reelBlink { 50% { opacity: 0.15; } }
+    .reel-num { color: var(--accent); font-size: 14px; letter-spacing: 0; }
+    .reel-frame {
+        position: relative;
+        background: #0a0a0a;
+        border: 1px solid var(--border);
+        box-shadow: 0 0 0 1px var(--bg), 0 20px 80px rgba(255,45,120,0.12);
+        transition: box-shadow 0.4s, border-color 0.4s;
+    }
+    .reel-frame:hover {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px var(--bg), 0 20px 90px rgba(255,45,120,0.28);
+    }
+    .reel-iframe {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        max-height: 82vh;
+        border: 0;
+        background: #0a0a0a;
+        pointer-events: none;
+    }
+    .reel-corner {
+        position: absolute;
+        width: 16px; height: 16px;
+        border: 2px solid var(--accent);
+        pointer-events: none;
+        z-index: 2;
+    }
+    .reel-corner.tl { top: -6px; left: -6px; border-right: 0; border-bottom: 0; }
+    .reel-corner.tr { top: -6px; right: -6px; border-left: 0; border-bottom: 0; }
+    .reel-corner.bl { bottom: -6px; left: -6px; border-right: 0; border-top: 0; }
+    .reel-corner.br { bottom: -6px; right: -6px; border-left: 0; border-top: 0; }
+    .reel-links {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 18px;
+        margin-top: 30px;
+        flex-wrap: wrap;
+    }
+    .reel-btn {
+        display: inline-block;
+        padding: 12px 28px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--text);
+        text-decoration: none;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        transition: all 0.3s;
+    }
+    .reel-btn:hover {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(255,45,120,0.35);
+    }
+    .reel-sep { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.2em; color: var(--gray); }
+    @media (max-width: 768px) {
+        .reel { padding: 50px 20px 0; }
+        .reel-iframe { aspect-ratio: 4 / 5; }
+        .reel-head { font-size: 10px; }
+    }
 </style>
 </head>
 <body>
@@ -1413,6 +1503,26 @@
             <span>LIMITED EDITION</span>
             <span>///</span>
         </div>
+    </div>
+</section>
+
+<!-- REEL -->
+<section class="reel" id="reel" aria-label="KUNIBOG motion reel">
+    <div class="reel-head">
+        <span class="reel-label"><i class="reel-dot"></i>Kuni Collection // 2027 — Reel</span>
+        <span class="reel-num">00</span>
+    </div>
+
+    <div class="reel-frame">
+        <iframe class="reel-iframe" src="reel.html" title="KUNIBOG motion reel" loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+        <i class="reel-corner tl"></i><i class="reel-corner tr"></i><i class="reel-corner bl"></i><i class="reel-corner br"></i>
+    </div>
+
+    <!-- hrefs этих кнопок обновляет applySettings() вместе с футером (a[href*="t.me/"], a[href*="instagram.com"]) -->
+    <div class="reel-links">
+        <a class="reel-btn" href="https://t.me/kunibog" target="_blank" rel="noopener">Telegram ↗</a>
+        <span class="reel-sep">///</span>
+        <a class="reel-btn" href="https://www.instagram.com/kunibog.clothing" target="_blank" rel="noopener">Instagram ↗</a>
     </div>
 </section>
 
@@ -2711,6 +2821,62 @@
             closeOrderModal();
         }
     });
+</script>
+
+<!-- REEL: управление анимацией (play/pause по видимости, свет за курсором, тексты из админки) -->
+<script>
+(function () {
+    var frame = document.querySelector('.reel-iframe');
+    if (!frame) return;
+    var box = frame.parentElement;
+    var vis = !('IntersectionObserver' in window);
+
+    function send(m) { try { frame.contentWindow && frame.contentWindow.postMessage(m, '*'); } catch (e) {} }
+    function sync() { send({ kr: (vis && !document.hidden) ? 'play' : 'pause' }); }
+
+    /* играет, пока блок на экране — не грузит телефон и не жрёт батарею */
+    if ('IntersectionObserver' in window) {
+        new IntersectionObserver(function (es) { vis = es[0].isIntersecting; sync(); }, { threshold: 0.15 }).observe(box);
+    }
+    document.addEventListener('visibilitychange', sync);
+
+    /* розовый свет в анимации следует за курсором */
+    var raf = 0;
+    box.addEventListener('pointermove', function (e) {
+        if (raf) return;
+        raf = requestAnimationFrame(function () {
+            raf = 0;
+            var r = box.getBoundingClientRect();
+            send({ kr: 'mouse', x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height });
+        });
+    });
+
+    /* бегущая строка и подпись в анимации = те же, что на главной (меняются в админке) */
+    var tt = 0;
+    function pushText() {
+        var mq = document.getElementById('marqueeContent');
+        var sub = document.getElementById('heroSub');
+        var items = [];
+        if (mq) [].forEach.call(mq.children, function (s) {
+            var t = s.textContent.trim();
+            if (t && t !== '///' && items.indexOf(t) < 0) items.push(t);
+        });
+        var line = '';
+        if (items.length) {
+            var one = items.join(' ✦ ') + ' ✦ ';
+            line = one;
+            while (line.length < 150) line += one;
+        }
+        send({ kr: 'txt', mq: line.trim(), sub: sub ? sub.textContent.trim() : '' });
+    }
+    function pushTextSoon() { clearTimeout(tt); tt = setTimeout(pushText, 150); }
+    ['marqueeContent', 'heroSub'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el && 'MutationObserver' in window) new MutationObserver(pushTextSoon).observe(el, { childList: true, characterData: true, subtree: true });
+    });
+
+    frame.addEventListener('load', function () { pushText(); sync(); });
+})();
 </script>
 </body>
 </html>
