@@ -1424,6 +1424,102 @@
         .reel-iframe { aspect-ratio: 4 / 5; }
         .reel-head { font-size: 10px; }
     }
+
+    /* SOUND TOGGLE */
+    .sound-toggle {
+        position: fixed;
+        bottom: 20px;
+        left: 144px;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        border: 1px solid var(--border);
+        background: var(--card-bg);
+        box-shadow: 0 0 0 1px var(--bg), 0 4px 20px rgba(0,0,0,0.25);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 101;
+        transition: all 0.3s;
+        font-size: 18px;
+    }
+    .sound-toggle:hover {
+        border-color: var(--accent);
+        transform: scale(1.08);
+        box-shadow: 0 0 20px rgba(255,45,120,0.5);
+    }
+    .sound-toggle.off { opacity: 0.55; }
+
+    /* ВАРИАНТЫ (размер / цвет / что угодно) */
+    .modal-sizes { flex-wrap: wrap; }
+    .size-btn { width: auto; min-width: 50px; padding: 0 14px; white-space: nowrap; }
+    .modal-opt-label {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+        color: var(--gray);
+        margin-bottom: 10px;
+    }
+    .modal-opt-label:empty { display: none; }
+
+    /* ЛИМИТ ШТУК + ТАЙМЕР ДРОПА */
+    .product-stock, .modal-status {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--accent);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 14px;
+    }
+    .product-stock { margin-top: 14px; }
+    .modal-status { margin-bottom: 20px; }
+    .modal-status:empty { display: none; }
+    .product-stock .timer, .modal-status .timer {
+        color: var(--text);
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+    .product-card.is-off .product-image { filter: grayscale(100%) brightness(0.85); opacity: 0.55; }
+    .product-card.is-off .product-stock { color: var(--gray); }
+    .modal-add-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* ПРОМОКОД В ЗАКАЗЕ */
+    .promo-row { display: flex; gap: 8px; }
+    .promo-row input { flex: 1; text-transform: uppercase; }
+    .promo-row .save-btn { padding: 12px 16px; white-space: nowrap; }
+    .promo-msg {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        margin-top: 8px;
+        min-height: 14px;
+        color: var(--accent);
+    }
+    .promo-msg.err { color: #ff5a5a; }
+
+    /* АДМИНКА: редактор товара и промокоды */
+    .admin-tabs { flex-wrap: wrap; gap: 12px 20px; }
+    .admin-edit { border: 1px dashed var(--accent); padding: 16px; margin-top: 14px; }
+    .admin-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+    .admin-mini-btn {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        color: var(--text);
+        padding: 5px 10px;
+        cursor: pointer;
+        font-size: 12px;
+        font-family: 'JetBrains Mono', monospace;
+    }
+    .admin-mini-btn.accent { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .admin-check { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+    .admin-check input { width: auto; }
+    .admin-check label { margin: 0; text-transform: none; letter-spacing: 0; font-size: 12px; }
+    @media (max-width: 768px) {
+        .admin-grid2 { grid-template-columns: 1fr; }
+        .sound-toggle { width: 44px; height: 44px; left: 130px; }
+    }
 </style>
 </head>
 <body>
@@ -1442,6 +1538,11 @@
 <!-- SLOT TOGGLE (незаметная кнопка с сердечком рядом с переключателем темы) -->
 <button class="slot-toggle" id="slotToggleBtn" onclick="toggleSlotMachine()" title="???">
     <svg viewBox="0 0 24 24" fill="#ff2d78"><path d="M12 21s-7.5-4.6-10-9.3C.5 8 2.3 4 6.2 4c2 0 3.6 1.2 4.3 2.9C11.2 5.2 12.8 4 14.8 4c3.9 0 5.7 4 4.2 7.7C19.5 16.4 12 21 12 21z"/></svg>
+</button>
+
+<!-- SOUND TOGGLE (звуки интерфейса: вкл/выкл) -->
+<button class="sound-toggle" id="soundToggleBtn" onclick="toggleSound()" title="Звук вкл/выкл">
+    <span id="soundIcon">🔊</span>
 </button>
 
 <!-- SLOT MACHINE -->
@@ -1576,8 +1677,10 @@
             <h3 class="modal-title" id="modalTitle"></h3>
             <div class="modal-price" id="modalPrice"></div>
             <p class="modal-desc" id="modalDesc"></p>
+            <div class="modal-status" id="modalStatus"></div>
+            <div class="modal-opt-label" id="modalOptLabel"></div>
             <div class="modal-sizes" id="modalSizes"></div>
-            <button class="modal-add-btn" onclick="addToCartFromModal()">Add to Cart</button>
+            <button class="modal-add-btn" id="modalAddBtn" onclick="addToCartFromModal()">Add to Cart</button>
         </div>
     </div>
 </div>
@@ -1622,6 +1725,7 @@
             <button class="admin-tab active" onclick="switchTab('products')">Products</button>
             <button class="admin-tab" onclick="switchTab('categories')">Categories</button>
             <button class="admin-tab" onclick="switchTab('orders')">Orders</button>
+            <button class="admin-tab" onclick="switchTab('promos')">Promo</button>
             <button class="admin-tab" onclick="switchTab('payment')">Payment</button>
             <button class="admin-tab" onclick="switchTab('settings')">Settings</button>
         </div>
@@ -1644,12 +1748,23 @@
                 <label>Tag (optional, e.g. NEW / HOT / LIMITED)</label>
                 <input type="text" id="newProductTag" placeholder="NEW">
             </div>
-            <div class="form-group">
-                <label>Size</label>
-                <select id="newProductSize">
-                    <option value="OVERSIZE">OVERSIZE (one size, всё в одном размере)</option>
-                    <option value="ONE SIZE">ONE SIZE</option>
-                </select>
+            <div class="admin-grid2">
+                <div class="form-group">
+                    <label>Название варианта (Size / Цвет / Материал...)</label>
+                    <input type="text" id="newProductOptLabel" value="Size" placeholder="Цвет">
+                </div>
+                <div class="form-group">
+                    <label>Варианты через запятую (пусто = без выбора)</label>
+                    <input type="text" id="newProductOptions" value="OVERSIZE" placeholder="Чёрный, Белый, Розовый">
+                </div>
+                <div class="form-group">
+                    <label>Осталось штук (пусто = без лимита)</label>
+                    <input type="number" id="newProductStock" min="0" placeholder="напр. 20">
+                </div>
+                <div class="form-group">
+                    <label>Конец дропа (пусто = без таймера)</label>
+                    <input type="datetime-local" id="newProductDropEnd">
+                </div>
             </div>
             <div class="form-group">
                 <label>Description</label>
@@ -1687,6 +1802,48 @@
             </div>
         </div>
         
+        <div class="admin-section" id="promos">
+            <h3 style="margin-bottom: 20px; color: var(--accent);" id="promoFormTitle">New Promo Code</h3>
+            <p style="color: var(--gray); font-size: 12px; margin-bottom: 20px;">Покупатель вводит код при оформлении заказа. Если отметить «для новых покупателей», код применяется сам и виден в заказе всем, кто ещё ничего не заказывал с этого устройства. Применяется одна скидка — та, что выгоднее (код или купон из казино).</p>
+            <div class="admin-grid2">
+                <div class="form-group">
+                    <label>Код</label>
+                    <input type="text" id="promoCode" placeholder="WELCOME10" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label>Тип скидки</label>
+                    <select id="promoType">
+                        <option value="percent">Процент (%)</option>
+                        <option value="fixed">Фикс. сумма (₽)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Размер скидки</label>
+                    <input type="number" id="promoValue" min="1" placeholder="10">
+                </div>
+                <div class="form-group">
+                    <label>Мин. сумма заказа ₽ (пусто = без минимума)</label>
+                    <input type="number" id="promoMin" min="0" placeholder="0">
+                </div>
+                <div class="form-group">
+                    <label>Действует до (пусто = бессрочно)</label>
+                    <input type="date" id="promoExpires">
+                </div>
+            </div>
+            <div class="admin-check">
+                <input type="checkbox" id="promoAutoNew">
+                <label for="promoAutoNew">Для новых покупателей: применять автоматически и показывать в заказе</label>
+            </div>
+            <div class="admin-check">
+                <input type="checkbox" id="promoActive" checked>
+                <label for="promoActive">Активен</label>
+            </div>
+            <button class="save-btn" id="promoSaveBtn" onclick="savePromo()">Add Promo</button>
+            <button class="save-btn" id="promoCancelBtn" style="display:none;background:transparent;border:1px solid var(--border);color:var(--text);margin-left:8px;" onclick="cancelPromoEdit()">Отмена</button>
+            <h3 style="margin: 30px 0 20px; color: var(--accent);">Current Promo Codes</h3>
+            <div id="adminPromoList"></div>
+        </div>
+
         <div class="admin-section" id="payment">
             <h3 style="margin-bottom: 20px; color: var(--accent);">Payment Methods</h3>
             <p style="color: var(--gray); font-size: 12px; margin-bottom: 20px;">Добавь способ оплаты: название, реквизит/адрес и (опционально) ссылку на картинку QR-кода. Если QR не указан — покупателю покажется просто адрес.</p>
@@ -1862,7 +2019,7 @@
     // После деплоя воркера вставь сюда его адрес, например 'https://kunibog-api.твой-ник.workers.dev'
     const API_URL = 'https://kunibog-api.arkhipowegor.workers.dev';
     let adminToken = sessionStorage.getItem('kb_admin_token') || '';
-    let siteSettings = { telegram: '', instagram: '', usdRate: 0, rateMode: '', heroImage: '' };
+    let siteSettings = { telegram: '', instagram: '', usdRate: 0, rateMode: '', heroImage: '', promos: [] };
 
     async function api(path, opts) {
         opts = opts || {};
@@ -1879,9 +2036,12 @@
     }
 
     async function sendOrderToServer(order) {
+        // выбранный вариант (размер/цвет) уходит в название позиции; промокод — пометкой в адресе,
+        // чтобы он гарантированно дошёл до тебя в уведомлении
+        const promoNote = order.promo ? `\n[ПРОМОКОД ${order.promo}: −${order.discount}₽]` : '';
         return api('/order', { method: 'POST', body: {
-            name: order.name, contact: order.contact, address: order.address, telegram: order.telegram,
-            items: order.items.map(i => ({ name: i.name, price: i.price })),
+            name: order.name, contact: order.contact, address: order.address + promoNote, telegram: order.telegram,
+            items: order.items.map(i => ({ name: i.chosen ? `${i.name} — ${i.chosen}` : i.name, price: i.price })),
             shipping: order.shipping, total: order.total, paymentMethod: order.paymentMethod, coupon: order.coupon || ''
         }});
     }
@@ -1959,12 +2119,92 @@
     function setCoupon(c) {
         try { if (c) localStorage.setItem('kb_coupon', JSON.stringify(c)); else localStorage.removeItem('kb_coupon'); } catch (e) {}
     }
+
+    // ====== ПРОМОКОДЫ (создаются в админке, вкладка Promo) ======
+    const LS_PROMO = 'kb_promo';       // код, который ввёл покупатель
+    const LS_ORDERED = 'kb_ordered';   // уже делал заказ с этого устройства
+    function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+    function lsSet(k, v) { try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
+    function isNewCustomer() { return !lsGet(LS_ORDERED); }
+    function activePromos() {
+        const now = Date.now();
+        return (siteSettings.promos || []).filter(p => p && p.code && p.active !== false && Number(p.value) > 0
+            && !(p.expires && new Date(p.expires + 'T23:59:59').getTime() < now)
+            && !(p.autoNew && !isNewCustomer()));
+    }
+    function findPromo(code) {
+        const c = String(code || '').trim().toUpperCase();
+        return c ? (activePromos().find(p => String(p.code).toUpperCase() === c) || null) : null;
+    }
+    function promoDiscount(p, subtotal) {
+        if (!p || subtotal <= 0 || subtotal < (Number(p.minTotal) || 0)) return 0;
+        const v = Number(p.value) || 0;
+        return p.type === 'fixed' ? Math.min(Math.round(v), subtotal) : Math.round(subtotal * Math.min(v, 100) / 100);
+    }
+    function currentPromo(subtotal) {
+        const manual = findPromo(lsGet(LS_PROMO));
+        if (manual && promoDiscount(manual, subtotal) > 0) return manual;
+        let best = null, bestD = 0;
+        activePromos().filter(p => p.autoNew).forEach(p => {   // авто-промо для новых покупателей
+            const d = promoDiscount(p, subtotal);
+            if (d > bestD) { bestD = d; best = p; }
+        });
+        return best;
+    }
     function calcTotals() {
         const subtotal = cart.reduce((sum, item) => sum + item.price, 0);
-        const coupon = getCoupon();
-        const discount = coupon ? Math.round(subtotal * coupon.percent / 100) : 0;
-        return { subtotal, discount, coupon, shipping: SHIPPING_RUB, total: subtotal - discount + SHIPPING_RUB };
+        const casino = getCoupon();
+        const cDisc = casino ? Math.round(subtotal * casino.percent / 100) : 0;
+        const promo = subtotal > 0 ? currentPromo(subtotal) : null;
+        const pDisc = promo ? promoDiscount(promo, subtotal) : 0;
+        let discount = 0, coupon = null, usedPromo = null, label = '';
+        if (pDisc > cDisc) {            // применяется одна скидка — выгоднее
+            discount = pDisc; usedPromo = promo;
+            label = `Промокод ${promo.code}` + (promo.type === 'fixed' ? '' : ` −${promo.value}%`);
+        } else if (cDisc > 0) {
+            discount = cDisc; coupon = casino;
+            label = `Скидка ${casino.percent}% (${casino.code})`;
+        }
+        return { subtotal, discount, coupon, promo: usedPromo, label, shipping: SHIPPING_RUB, total: subtotal - discount + SHIPPING_RUB };
     }
+
+    // ====== ЛИМИТ ШТУК И ТАЙМЕР ДРОПА ======
+    function productState(p) {
+        let stock = (p.stock === null || p.stock === undefined || p.stock === '') ? null : Number(p.stock);
+        if (stock !== null && isNaN(stock)) stock = null;
+        const end = p.dropEnd ? new Date(p.dropEnd).getTime() : 0;
+        const ended = !!end && !isNaN(end) && Date.now() >= end;
+        const inCart = cart.filter(i => i.id === p.id).length;
+        const soldOut = stock !== null && stock <= 0;
+        return { stock, end: isNaN(end) ? 0 : end, ended, soldOut, inCart, canAdd: !ended && !soldOut && (stock === null || inCart < stock) };
+    }
+    function fmtLeft(ms) {
+        const s = Math.max(0, Math.floor(ms / 1000));
+        const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
+        const p = n => String(n).padStart(2, '0');
+        return (d > 0 ? d + 'д ' : '') + `${p(h)}:${p(m)}:${p(sec)}`;
+    }
+    function stockHtml(p) {
+        const s = productState(p);
+        if (s.ended) return '<span>Дроп завершён</span>';
+        if (s.soldOut) return '<span>Sold out</span>';
+        let out = '';
+        if (s.stock !== null) out += `<span>Осталось ${s.stock} шт.</span>`;
+        if (s.end) out += `<span>До конца: <b class="timer" data-end="${new Date(s.end).toISOString()}">${fmtLeft(s.end - Date.now())}</b></span>`;
+        return out;
+    }
+    function tickDrops() {
+        let finished = false;
+        document.querySelectorAll('.timer[data-end]').forEach(el => {
+            const left = new Date(el.dataset.end).getTime() - Date.now();
+            if (left <= 0) finished = true; else el.textContent = fmtLeft(left);
+        });
+        if (finished) {
+            renderProducts();
+            if (document.getElementById('productModal').classList.contains('open')) refreshModalState();
+        }
+    }
+    setInterval(tickDrops, 1000);
 
     function applySettings() {
         applyTexts();
@@ -2120,8 +2360,10 @@
             ? products 
             : products.filter(p => p.category === currentCategory);
         
-        grid.innerHTML = filtered.map(p => `
-            <div class="product-card" onclick="openProductModal(${p.id})">
+        grid.innerHTML = filtered.map(p => {
+            const st = stockHtml(p), s = productState(p);
+            return `
+            <div class="product-card ${(s.ended || s.soldOut) ? 'is-off' : ''}" onclick="openProductModal(${p.id})">
                 ${p.tag ? `<span class="product-tag">${p.tag}</span>` : ''}
                 <img src="${p.images[0]}" alt="${p.name}" class="product-image">
                 <div class="product-info">
@@ -2131,8 +2373,9 @@
                     </div>
                     <div class="product-price">${formatPrice(p.price)}</div>
                 </div>
+                ${st ? `<div class="product-stock">${st}</div>` : ''}
             </div>
-        `).join('');
+        `; }).join('');
     }
     
     // PRODUCT MODAL
@@ -2146,11 +2389,14 @@
         document.getElementById('modalPrice').innerHTML = formatPrice(currentProduct.price);
         document.getElementById('modalDesc').textContent = currentProduct.desc;
         
-        // Sizes
+        // Варианты (размер / цвет / что задано в админке)
+        const opts = (currentProduct.sizes || []).filter(Boolean);
+        document.getElementById('modalOptLabel').textContent = opts.length ? (currentProduct.optionLabel || 'Size') : '';
         const sizesDiv = document.getElementById('modalSizes');
-        sizesDiv.innerHTML = currentProduct.sizes.map((s, i) => `
-            <button class="size-btn ${i === 0 ? 'active' : ''}" onclick="selectSize(this)">${s}</button>
+        sizesDiv.innerHTML = opts.map((s, i) => `
+            <button class="size-btn ${i === 0 ? 'active' : ''}" data-val="${esc(s)}" onclick="selectSize(this)">${esc(s)}</button>
         `).join('');
+        refreshModalState();
         
         // Gallery nav
         const nav = document.getElementById('galleryNav');
@@ -2185,19 +2431,32 @@
         btn.classList.add('active');
     }
     
+    function refreshModalState() {
+        const p = currentProduct;
+        if (!p) return;
+        const s = productState(p);
+        document.getElementById('modalStatus').innerHTML = stockHtml(p);
+        const btn = document.getElementById('modalAddBtn');
+        btn.disabled = !s.canAdd;
+        btn.textContent = s.ended ? 'Drop ended' : s.soldOut ? 'Sold out' : (!s.canAdd ? 'Max in cart' : 'Add to Cart');
+    }
+
     function addToCartFromModal() {
         if (currentProduct) {
-            cart.push(currentProduct);
+            if (!productState(currentProduct).canAdd) { refreshModalState(); return; }
+            const active = document.querySelector('#modalSizes .size-btn.active');
+            cart.push({ ...currentProduct, chosen: active ? active.dataset.val : '' });
             updateCart();
             closeProductModal();
             showNotification('Added to cart');
         }
     }
-    
+
     // CART
     function addToCart(id) {
         const product = products.find(p => p.id === id);
-        cart.push(product);
+        if (!product || !productState(product).canAdd) return;
+        cart.push({ ...product, chosen: (product.sizes || [])[0] || '' });
         updateCart();
         showNotification('Added to cart');
     }
@@ -2218,7 +2477,7 @@
                 <div class="cart-item">
                     <img src="${item.images[0]}" alt="${item.name}">
                     <div class="cart-item-details">
-                        <div class="cart-item-name">${item.name}</div>
+                        <div class="cart-item-name">${item.name}${item.chosen ? ` · ${esc(item.chosen)}` : ''}</div>
                         <div class="cart-item-price">${formatPrice(item.price)}</div>
                     </div>
                     <button class="remove-item" onclick="removeFromCart(${index})">×</button>
@@ -2229,7 +2488,7 @@
         const t = calcTotals();
         document.getElementById('cartTotal').innerHTML = formatPrice(t.subtotal - t.discount);
         const dEl = document.getElementById('cartDiscount');
-        if (dEl) dEl.textContent = (t.discount > 0 && cart.length) ? `Скидка ${t.coupon.percent}% (${t.coupon.code}): −${t.discount}₽` : '';
+        if (dEl) dEl.textContent = (t.discount > 0 && cart.length) ? `${t.label}: −${t.discount}₽` : '';
     }
     
     function toggleCart() {
@@ -2249,7 +2508,6 @@
     function openOrderStepForm() {
         selectedPaymentId = null;
         const t = calcTotals();
-        const subtotal = t.subtotal, total = t.total;
         document.getElementById('orderContent').innerHTML = `
             <div class="order-title">Оформление заказа</div>
             <div class="order-step-label">Шаг 1 / 2 — Данные получателя</div>
@@ -2269,13 +2527,55 @@
                 <label>Telegram (по желанию)</label>
                 <input type="text" id="orderTelegram" placeholder="@username">
             </div>
+            <div class="form-group">
+                <label>Промокод</label>
+                <div class="promo-row">
+                    <input type="text" id="promoInput" placeholder="CODE" autocomplete="off" value="${esc(t.promo ? t.promo.code : '')}">
+                    <button class="save-btn" type="button" onclick="applyPromoInput()">Применить</button>
+                </div>
+                <div class="promo-msg" id="promoMsg"></div>
+            </div>
             <div class="order-gift-note">🎁 При оформлении заказа — сертификат на куни в подарок &lt;3</div>
-            <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--gray); margin-bottom:4px;">Товары: ${rubOnly(subtotal)} · Доставка: ${rubOnly(SHIPPING_RUB)}</div>
-            ${t.discount > 0 ? `<div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent); margin-bottom:4px;">Скидка ${t.coupon.percent}% на первый заказ (${esc(t.coupon.code)}): −${rubOnly(t.discount)}</div>` : ''}
-            <div style="font-family:'JetBrains Mono',monospace; font-size:13px; margin-bottom:15px;">Итого: ${formatPrice(total)}</div>
+            <div id="orderTotals" style="margin-bottom:15px;"></div>
             <button class="save-btn" style="width:100%;" onclick="submitOrderForm()">Продолжить к оплате</button>
         `;
+        renderOrderTotals();
         document.getElementById('orderModal').classList.add('open');
+    }
+
+    // суммы и статус промокода в шаге 1 (обновляются без потери введённых данных)
+    function renderOrderTotals(errText) {
+        const el = document.getElementById('orderTotals');
+        if (!el) return;
+        const t = calcTotals();
+        const mono = "font-family:'JetBrains Mono',monospace;";
+        el.innerHTML = `
+            <div style="${mono} font-size:12px; color:var(--gray); margin-bottom:4px;">Товары: ${rubOnly(t.subtotal)} · Доставка: ${rubOnly(SHIPPING_RUB)}</div>
+            ${t.discount > 0 ? `<div style="${mono} font-size:12px; color:var(--accent); margin-bottom:4px;">${esc(t.label)}: −${rubOnly(t.discount)}</div>` : ''}
+            <div style="${mono} font-size:13px;">Итого: ${formatPrice(t.total)}</div>`;
+        const m = document.getElementById('promoMsg');
+        if (!m) return;
+        if (errText) { m.className = 'promo-msg err'; m.textContent = errText; return; }
+        m.className = 'promo-msg';
+        m.textContent = t.promo
+            ? `✓ Промокод ${t.promo.code} применён: −${t.discount}₽` + (t.promo.autoNew && String(lsGet(LS_PROMO) || '').toUpperCase() !== String(t.promo.code).toUpperCase() ? ' · для новых покупателей, сразу в заказе' : '')
+            : '';
+    }
+
+    function applyPromoInput() {
+        const inp = document.getElementById('promoInput');
+        if (!inp) return;
+        const code = inp.value.trim();
+        if (!code) { lsSet(LS_PROMO, null); renderOrderTotals(); updateCart(); return; }
+        const p = findPromo(code);
+        if (!p) { renderOrderTotals('Промокод не найден или уже не действует'); return; }
+        const sub = calcTotals().subtotal;
+        if (sub < (Number(p.minTotal) || 0)) { renderOrderTotals(`Для этого кода нужен заказ от ${p.minTotal}₽`); return; }
+        lsSet(LS_PROMO, p.code);
+        inp.value = p.code;
+        renderOrderTotals();
+        updateCart();
+        showNotification('Промокод применён');
     }
 
     function submitOrderForm() {
@@ -2290,7 +2590,7 @@
         }
 
         const t = calcTotals();
-        pendingOrder = { name, contact, address, telegram, items: [...cart], subtotal: t.subtotal, discount: t.discount, coupon: t.coupon ? t.coupon.code : '', shipping: SHIPPING_RUB, total: t.total, date: new Date().toISOString() };
+        pendingOrder = { name, contact, address, telegram, items: [...cart], subtotal: t.subtotal, discount: t.discount, coupon: t.coupon ? t.coupon.code : '', promo: t.promo ? t.promo.code : '', shipping: SHIPPING_RUB, total: t.total, date: new Date().toISOString() };
         openOrderStepPayment();
     }
 
@@ -2347,6 +2647,8 @@
             return;
         }
         setCoupon(null); // купон одноразовый
+        lsSet(LS_PROMO, null);
+        lsSet(LS_ORDERED, '1'); // после первого заказа авто-промо для новых больше не действует
         cart = [];
         updateCart();
         closeOrderModal();
@@ -2407,6 +2709,7 @@
         renderAdminCategories();
         renderAdminPaymentList();
         renderAdminOrders();
+        renderAdminPromos();
         document.getElementById('settingsRate').value = usdRateRub;
         document.getElementById('settingsAutoRate').checked = (rateMode === 'auto');
         document.getElementById('settingsTelegram').value = siteSettings.telegram || 'https://t.me/kunibog';
@@ -2431,14 +2734,21 @@
     
     function renderAdminProducts() {
         const list = document.getElementById('adminProductList');
-        list.innerHTML = products.map((p, i) => `
+        list.innerHTML = products.map((p, i) => {
+            const s = productState(p);
+            const info = [];
+            if (s.stock !== null) info.push(`Осталось: <b>${s.stock}</b> <button class="admin-mini-btn" onclick="adjustStock(${p.id}, -1)">−1</button> <button class="admin-mini-btn" onclick="adjustStock(${p.id}, 1)">+1</button>`);
+            if (s.end) info.push(s.ended ? 'Дроп завершён' : `Дроп до ${esc(new Date(s.end).toLocaleString('ru-RU'))}`);
+            if ((p.sizes || []).length) info.push(`${esc(p.optionLabel || 'Size')}: ${esc(p.sizes.join(', '))}`);
+            return `
             <div style="padding: 15px; border: 1px solid var(--border); margin-bottom: 10px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
                     <div>
-                        <strong>${p.name}</strong>
+                        <strong>${esc(p.name)}</strong>
                         <span style="color: var(--gray); margin-left: 10px;">${rubOnly(p.price)}</span>
                     </div>
                     <div style="display:flex; gap:6px;">
+                        <button onclick="${editingProductId === p.id ? 'cancelEditProduct()' : `editProduct(${p.id})`}" class="admin-mini-btn accent">${editingProductId === p.id ? 'Close' : 'Edit'}</button>
                         <button onclick="moveProduct(${p.id}, -1)" title="Выше" style="background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 5px 10px; cursor: pointer; font-size: 12px;" ${i === 0 ? 'disabled' : ''}>↑</button>
                         <button onclick="moveProduct(${p.id}, 1)" title="Ниже" style="background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 5px 10px; cursor: pointer; font-size: 12px;" ${i === products.length - 1 ? 'disabled' : ''}>↓</button>
                         <button onclick="deleteProduct(${p.id})" style="background: var(--accent); color: white; border: none; padding: 5px 10px; cursor: pointer; font-size: 12px;">Delete</button>
@@ -2448,10 +2758,82 @@
                     <select onchange="setProductCategory(${p.id}, this.value)" style="background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px;">
                         ${categories.map(c => `<option value="${c.key}" ${c.key === p.category ? 'selected' : ''}>${c.label}</option>`).join('')}
                     </select>
-                    <input type="text" value="${p.tag || ''}" placeholder="плашка (NEW, HOT...)" onchange="setProductTag(${p.id}, this.value)" style="background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; width: 140px;">
+                    <input type="text" value="${esc(p.tag || '')}" placeholder="плашка (NEW, HOT...)" onchange="setProductTag(${p.id}, this.value)" style="background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; width: 140px;">
                 </div>
+                ${info.length ? `<div style="margin-top:10px; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--gray); display:flex; flex-wrap:wrap; gap:6px 18px; align-items:center;">${info.map(x => `<span>${x}</span>`).join('')}</div>` : ''}
+                ${editingProductId === p.id ? `
+                <div class="admin-edit">
+                    <div class="admin-grid2">
+                        <div class="form-group"><label>Название</label><input type="text" id="ep-name" value="${esc(p.name)}"></div>
+                        <div class="form-group"><label>Цена (₽)</label><input type="number" id="ep-price" value="${esc(p.price)}"></div>
+                        <div class="form-group"><label>Название варианта (Size / Цвет...)</label><input type="text" id="ep-optlabel" value="${esc(p.optionLabel || 'Size')}"></div>
+                        <div class="form-group"><label>Варианты через запятую (пусто = без выбора)</label><input type="text" id="ep-options" value="${esc((p.sizes || []).join(', '))}"></div>
+                        <div class="form-group"><label>Осталось штук (пусто = без лимита)</label><input type="number" min="0" id="ep-stock" value="${s.stock === null ? '' : s.stock}"></div>
+                        <div class="form-group"><label>Конец дропа (пусто = без таймера)</label><input type="datetime-local" id="ep-dropend" value="${toLocalInput(p.dropEnd)}"></div>
+                    </div>
+                    <div class="form-group"><label>Описание</label><textarea id="ep-desc" rows="3">${esc(p.desc)}</textarea></div>
+                    <div class="form-group"><label>Картинки (URL или имена файлов через запятую)</label><input type="text" id="ep-images" value="${esc((p.images || []).join(', '))}"></div>
+                    <button class="save-btn" onclick="saveEditedProduct(${p.id})">Save Changes</button>
+                    <button class="save-btn" style="background:transparent;border:1px solid var(--border);color:var(--text);margin-left:8px;" onclick="cancelEditProduct()">Отмена</button>
+                </div>` : ''}
             </div>
-        `).join('');
+        `; }).join('');
+    }
+
+    // РЕДАКТОР ВЫЛОЖЕННЫХ ТОВАРОВ
+    let editingProductId = null;
+    function toLocalInput(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        if (isNaN(d)) return '';
+        const p = n => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+    }
+    function fromLocalInput(v) {
+        if (!v) return '';
+        const d = new Date(v);
+        return isNaN(d) ? '' : d.toISOString();
+    }
+    function parseOptions(s) { return String(s || '').split(',').map(x => x.trim()).filter(Boolean); }
+    function parseStock(v) {
+        v = String(v == null ? '' : v).trim();
+        if (v === '') return null;
+        const n = parseInt(v, 10);
+        return (isNaN(n) || n < 0) ? null : n;
+    }
+    function editProduct(id) { editingProductId = id; renderAdminProducts(); }
+    function cancelEditProduct() { editingProductId = null; renderAdminProducts(); }
+    function saveEditedProduct(id) {
+        const p = products.find(x => x.id === id);
+        if (!p) return;
+        const name = document.getElementById('ep-name').value.trim();
+        const price = parseFloat(document.getElementById('ep-price').value);
+        if (!name || !price) { alert('Заполни название и цену!'); return; }
+        p.name = name;
+        p.price = price;
+        p.optionLabel = document.getElementById('ep-optlabel').value.trim() || 'Size';
+        p.sizes = parseOptions(document.getElementById('ep-options').value);
+        p.stock = parseStock(document.getElementById('ep-stock').value);
+        p.dropEnd = fromLocalInput(document.getElementById('ep-dropend').value);
+        p.desc = document.getElementById('ep-desc').value;
+        const imgs = parseOptions(document.getElementById('ep-images').value);
+        if (imgs.length) p.images = imgs;
+        editingProductId = null;
+        renderAdminProducts();
+        renderProducts();
+        updateCart();
+        saveAllData();
+        showNotification('Товар сохранён');
+    }
+    function adjustStock(id, delta) {
+        const p = products.find(x => x.id === id);
+        if (!p) return;
+        const cur = parseStock(p.stock);
+        if (cur === null) return;
+        p.stock = Math.max(0, cur + delta);
+        renderAdminProducts();
+        renderProducts();
+        saveAllData();
     }
 
     function moveProduct(id, dir) {
@@ -2478,7 +2860,10 @@
         const price = parseFloat(document.getElementById('newProductPrice').value);
         const category = document.getElementById('newProductCategory').value;
         const tag = document.getElementById('newProductTag').value.trim();
-        const size = document.getElementById('newProductSize').value;
+        const optLabel = document.getElementById('newProductOptLabel').value.trim() || 'Size';
+        const options = parseOptions(document.getElementById('newProductOptions').value);
+        const stock = parseStock(document.getElementById('newProductStock').value);
+        const dropEnd = fromLocalInput(document.getElementById('newProductDropEnd').value);
         const desc = document.getElementById('newProductDesc').value;
         const imagesStr = document.getElementById('newProductImages').value;
         const images = imagesStr ? imagesStr.split(',').map(s => s.trim()) : ['https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600&h=800&fit=crop'];
@@ -2496,7 +2881,10 @@
             desc,
             images,
             tag: tag || 'NEW',
-            sizes: [size]
+            sizes: options,
+            optionLabel: optLabel,
+            stock,
+            dropEnd
         });
         
         renderProducts();
@@ -2508,8 +2896,108 @@
         document.getElementById('newProductTag').value = '';
         document.getElementById('newProductDesc').value = '';
         document.getElementById('newProductImages').value = '';
-        
+        document.getElementById('newProductStock').value = '';
+        document.getElementById('newProductDropEnd').value = '';
+
         alert('Product added!');
+    }
+
+    // PROMO CODES ADMIN
+    let editingPromoId = null;
+    function renderAdminPromos() {
+        const list = document.getElementById('adminPromoList');
+        if (!list) return;
+        const promos = siteSettings.promos || [];
+        if (!promos.length) {
+            list.innerHTML = '<p style="color: var(--gray); font-family: \'JetBrains Mono\', monospace; font-size: 12px;">Промокодов пока нет.</p>';
+            return;
+        }
+        list.innerHTML = promos.map(p => {
+            const val = p.type === 'fixed' ? `−${esc(p.value)}₽` : `−${esc(p.value)}%`;
+            const meta = [
+                p.autoNew ? 'авто для новых' : '',
+                Number(p.minTotal) > 0 ? `от ${esc(p.minTotal)}₽` : '',
+                p.expires ? `до ${esc(p.expires)}` : ''
+            ].filter(Boolean).join(' · ');
+            return `
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; padding:15px; border:1px solid var(--border); margin-bottom:10px; ${p.active === false ? 'opacity:.5;' : ''}">
+                <div>
+                    <strong style="font-family:'JetBrains Mono',monospace;">${esc(p.code)}</strong>
+                    <span style="color:var(--accent); margin-left:10px;">${val}</span>
+                    <div style="color:var(--gray); font-size:11px; margin-top:4px;">${meta || 'без условий'}${p.active === false ? ' · выключен' : ''}</div>
+                </div>
+                <div style="display:flex; gap:6px;">
+                    <button class="admin-mini-btn" onclick="togglePromo(${p.id})">${p.active === false ? 'Включить' : 'Выключить'}</button>
+                    <button class="admin-mini-btn" onclick="editPromo(${p.id})">Edit</button>
+                    <button onclick="deletePromo(${p.id})" style="background: var(--accent); color: white; border: none; padding: 5px 10px; cursor: pointer; font-size: 12px;">Delete</button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+    function resetPromoForm() {
+        editingPromoId = null;
+        ['promoCode', 'promoValue', 'promoMin', 'promoExpires'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('promoType').value = 'percent';
+        document.getElementById('promoAutoNew').checked = false;
+        document.getElementById('promoActive').checked = true;
+        document.getElementById('promoFormTitle').textContent = 'New Promo Code';
+        document.getElementById('promoSaveBtn').textContent = 'Add Promo';
+        document.getElementById('promoCancelBtn').style.display = 'none';
+    }
+    function cancelPromoEdit() { resetPromoForm(); }
+    function editPromo(id) {
+        const p = (siteSettings.promos || []).find(x => x.id === id);
+        if (!p) return;
+        editingPromoId = id;
+        document.getElementById('promoCode').value = p.code;
+        document.getElementById('promoType').value = p.type === 'fixed' ? 'fixed' : 'percent';
+        document.getElementById('promoValue').value = p.value;
+        document.getElementById('promoMin').value = p.minTotal || '';
+        document.getElementById('promoExpires').value = p.expires || '';
+        document.getElementById('promoAutoNew').checked = !!p.autoNew;
+        document.getElementById('promoActive').checked = p.active !== false;
+        document.getElementById('promoFormTitle').textContent = 'Edit Promo Code';
+        document.getElementById('promoSaveBtn').textContent = 'Save Changes';
+        document.getElementById('promoCancelBtn').style.display = '';
+        document.getElementById('promoCode').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    function savePromo() {
+        const code = document.getElementById('promoCode').value.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+        const type = document.getElementById('promoType').value === 'fixed' ? 'fixed' : 'percent';
+        const value = parseFloat(document.getElementById('promoValue').value);
+        const minTotal = parseFloat(document.getElementById('promoMin').value) || 0;
+        const expires = document.getElementById('promoExpires').value || '';
+        const autoNew = document.getElementById('promoAutoNew').checked;
+        const active = document.getElementById('promoActive').checked;
+        if (!code) { alert('Введи код (латиница, цифры, - и _).'); return; }
+        if (!(value > 0)) { alert('Укажи размер скидки.'); return; }
+        if (type === 'percent' && value > 100) { alert('Процент не может быть больше 100.'); return; }
+        siteSettings.promos = siteSettings.promos || [];
+        if (siteSettings.promos.some(p => p.code === code && p.id !== editingPromoId)) { alert('Такой код уже есть.'); return; }
+        const data = { code, type, value, minTotal, expires, autoNew, active };
+        if (editingPromoId) {
+            const p = siteSettings.promos.find(x => x.id === editingPromoId);
+            if (p) Object.assign(p, data);
+        } else {
+            siteSettings.promos.push({ id: Date.now(), ...data });
+        }
+        resetPromoForm();
+        renderAdminPromos();
+        updateCart();
+        saveAllData();
+        showNotification('Промокод сохранён');
+    }
+    function togglePromo(id) {
+        const p = (siteSettings.promos || []).find(x => x.id === id);
+        if (!p) return;
+        p.active = p.active === false;
+        renderAdminPromos(); updateCart(); saveAllData();
+    }
+    function deletePromo(id) {
+        if (!confirm('Delete this promo code?')) return;
+        siteSettings.promos = (siteSettings.promos || []).filter(p => p.id !== id);
+        if (editingPromoId === id) resetPromoForm();
+        renderAdminPromos(); updateCart(); saveAllData();
     }
 
     // PAYMENT METHODS ADMIN
@@ -2799,6 +3287,128 @@
         }, 2000);
     }
     
+    // ====== ЗВУКИ ИНТЕРФЕЙСА (генерируются в браузере, файлов не нужно) ======
+    // мягкий «тук» на клики и звук печатной машинки при вводе текста; кнопка 🔊 внизу — вкл/выкл
+    const Sound = (function () {
+        let ctx = null, master = null, noiseBuf = null, last = 0;
+        let on = true;
+        try { on = localStorage.getItem('kb_sound') !== 'off'; } catch (e) {}
+
+        function init() {
+            if (ctx) return true;
+            const AC = window.AudioContext || window.webkitAudioContext;
+            if (!AC) return false;
+            try {
+                ctx = new AC();
+                master = ctx.createGain();
+                master.gain.value = 0.7;
+                master.connect(ctx.destination);
+                const len = Math.floor(ctx.sampleRate * 0.06);
+                noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
+                const d = noiseBuf.getChannelData(0);
+                for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+            } catch (e) { ctx = null; return false; }
+            return true;
+        }
+        function ready() {
+            if (!on || !init()) return false;
+            if (ctx.state === 'suspended') ctx.resume();
+            return true;
+        }
+        function env(g, t, peak, att, dec) {
+            g.gain.setValueAtTime(0.0001, t);
+            g.gain.exponentialRampToValueAtTime(peak, t + att);
+            g.gain.exponentialRampToValueAtTime(0.0001, t + att + dec);
+        }
+        function tone(type, f0, f1, t, peak, dec, att) {
+            att = att || 0.004;
+            const o = ctx.createOscillator(), g = ctx.createGain();
+            o.type = type;
+            o.frequency.setValueAtTime(f0, t);
+            if (f1 && f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t + dec);
+            env(g, t, peak, att, dec);
+            o.connect(g); g.connect(master);
+            o.start(t); o.stop(t + att + dec + 0.03);
+        }
+        function noise(freq, q, t, peak, dec) {
+            const s = ctx.createBufferSource();
+            s.buffer = noiseBuf;
+            const f = ctx.createBiquadFilter();
+            f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q;
+            const g = ctx.createGain();
+            env(g, t, peak, 0.002, dec);
+            s.connect(f); f.connect(g); g.connect(master);
+            s.start(t); s.stop(t + 0.06);
+        }
+        return {
+            isOn: () => on,
+            set(v) { on = v; try { localStorage.setItem('kb_sound', v ? 'on' : 'off'); } catch (e) {} },
+            click() {
+                if (!ready()) return;
+                const t = ctx.currentTime, r = 1 + (Math.random() - 0.5) * 0.06;
+                tone('sine', 620 * r, 340 * r, t, 0.07, 0.07);
+                tone('sine', 1240 * r, 700 * r, t, 0.02, 0.04);
+            },
+            key(kind) {
+                if (!ready()) return;
+                const now = performance.now();
+                if (now - last < 18) return;
+                last = now;
+                const t = ctx.currentTime, r = 1 + (Math.random() - 0.5) * 0.18;
+                if (kind === 'enter') {          // возврат каретки + звоночек
+                    noise(1400, 0.9, t, 0.12, 0.05);
+                    tone('sine', 140, 80, t, 0.10, 0.09);
+                    tone('sine', 2093, 2093, t + 0.07, 0.045, 0.55, 0.003);
+                    tone('sine', 3136, 3136, t + 0.07, 0.015, 0.35, 0.003);
+                } else if (kind === 'space') {   // пробел — глубже
+                    noise(900 * r, 0.8, t, 0.08, 0.05);
+                    tone('sine', 105 * r, 70, t, 0.12, 0.08);
+                } else if (kind === 'back') {    // стирание — тише и выше
+                    noise(2800 * r, 1.2, t, 0.06, 0.025);
+                    tone('sine', 210 * r, 150, t, 0.05, 0.04);
+                } else {                         // обычная клавиша
+                    noise(2000 * r, 0.9, t, 0.10, 0.03);
+                    tone('sine', 160 * r, 95, t, 0.08, 0.05);
+                }
+            }
+        };
+    })();
+
+    function updateSoundIcon() {
+        const on = Sound.isOn();
+        document.getElementById('soundIcon').textContent = on ? '🔊' : '🔇';
+        document.getElementById('soundToggleBtn').classList.toggle('off', !on);
+    }
+    function toggleSound() {
+        Sound.set(!Sound.isOn());
+        updateSoundIcon();
+        if (Sound.isOn()) Sound.click();
+    }
+    updateSoundIcon();
+
+    // клики: кнопки, ссылки, карточки, фильтры (тайный вход в админку без звука)
+    document.addEventListener('click', function (e) {
+        const el = e.target && e.target.closest ? e.target.closest('a, button, .product-card, .category-btn, .gallery-dot, .order-pay-option, [onclick], select, input[type=checkbox]') : null;
+        if (!el || el.closest('.hidden-admin-trigger') || el.id === 'soundToggleBtn') return;
+        Sound.click();
+    }, true);
+
+    // ввод текста: печатная машинка
+    document.addEventListener('input', function (e) {
+        const t = e.target;
+        if (!t || !t.matches || !t.matches('textarea, input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):not([type=color])')) return;
+        const it = e.inputType || '';
+        if (it === 'insertLineBreak' || it === 'insertParagraph') return;
+        if (it.indexOf('delete') === 0) Sound.key('back');
+        else if (e.data === ' ') Sound.key('space');
+        else Sound.key('key');
+    }, true);
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        const t = e.target;
+        if (t && t.matches && t.matches('textarea, input[type=text], input[type=password], input[type=number], input[type=email], input[type=tel]')) Sound.key('enter');
+    }, true);
+
     // SMOOTH SCROLL
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {
