@@ -333,6 +333,7 @@
         position: absolute;
         inset: 0;
         left: 32%;
+        right: 2.5%;          /* модель чуть левее */
         bottom: 57px;         /* FIX: модель заканчивается над бегущей строкой */
         z-index: 1;
         -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 86%, transparent 100%);
@@ -380,12 +381,12 @@
     }
     .hero-logo-big {
         display: block;
-        width: clamp(170px, 20vw, 340px);
+        width: clamp(200px, 23.5vw, 410px);
         height: auto;
         opacity: 0;
         filter: drop-shadow(0 12px 34px rgba(0,0,0,0.65));
         transform: translateY(30px);
-        animation: fadeUp 1.2s cubic-bezier(0.19, 1, 0.22, 1) 0.3s forwards;
+        animation: heroRise 1.2s cubic-bezier(0.19, 1, 0.22, 1) 0.3s forwards;
     }
     .hero-sub {
         font-family: 'JetBrains Mono', monospace;
@@ -395,16 +396,16 @@
         letter-spacing: 0.3em;
         text-transform: uppercase;
         opacity: 0;
-        animation: fadeUp 1s ease 0.8s forwards;
+        animation: heroRise 1s ease 0.8s forwards;
     }
 
     /* РОЗОВЫЕ ШИПЫ МЕЖДУ ЛОГО И ФОТО */
     .hero-thorn {
         position: absolute;
-        left: 21%;
-        top: 2%;
-        height: 92%;
-        z-index: 1;
+        left: 40%;            /* <-- двигай это число, чтобы шипы встали ровно на переход */
+        top: 0;
+        height: calc(100% - 57px);
+        z-index: 2;
         opacity: 0;
         pointer-events: none;
         filter: drop-shadow(0 0 26px rgba(255,45,120,0.5));
@@ -496,6 +497,11 @@
         }
     }
     
+    @keyframes heroRise {
+        from { opacity: 0; transform: translateY(30px); }
+        to   { opacity: 1; transform: translateY(0) rotate(0deg); }
+    }
+
     @keyframes fadeIn {
         to { opacity: 1; }
     }
