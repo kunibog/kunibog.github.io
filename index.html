@@ -115,7 +115,7 @@
         height: 2px;
         background: linear-gradient(90deg, transparent, var(--accent), transparent);
         opacity: 0.4;
-        z-index: 998;
+        z-index: -1;           /* самый нижний слой: только над фоном, под карточками и текстом */
         pointer-events: none;
         animation: scanline 6s linear infinite;
     }
