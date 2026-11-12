@@ -328,12 +328,74 @@
         background-size: 512px 512px;
     }
 
+    /* ЗА МОДЕЛЬЮ: пульсирующее розовое сияние + медленная дымка (всё под моделью, края замаскированы) */
+    .hero-aura {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background:
+            radial-gradient(ellipse 34% 62% at 74% 52%, rgba(255,45,120,0.30), transparent 70%),
+            radial-gradient(ellipse 18% 34% at 80% 38%, rgba(255,45,120,0.22), transparent 70%);
+        animation: auraPulse 5.5s ease-in-out infinite;
+    }
+    @keyframes auraPulse {
+        0%, 100% { opacity: 0.55; transform: scale(1); }
+        50%      { opacity: 1;    transform: scale(1.07); }
+    }
+    .hero-smoke {
+        position: absolute;
+        top: -10%; bottom: -10%;
+        left: 30%; right: -20%;
+        z-index: 0;
+        pointer-events: none;
+        background-repeat: no-repeat;
+        background-size: 100% 100%;
+        mix-blend-mode: screen;
+        -webkit-mask-image: radial-gradient(ellipse 60% 55% at 55% 50%, #000 0%, transparent 75%);
+        mask-image: radial-gradient(ellipse 60% 55% at 55% 50%, #000 0%, transparent 75%);
+    }
+    .hero-smoke-a {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1400' height='900'%3E%3Cfilter id='f' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.0045 .009' numOctaves='3' seed='11'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 .18 0 0 0 0 .47 2.8 0 0 0 -1.15'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+        opacity: 0.30;
+        animation: smokeDriftA 26s ease-in-out infinite alternate;
+    }
+    .hero-smoke-b {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1400' height='900'%3E%3Cfilter id='f' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.006 .011' numOctaves='3' seed='29'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 .18 0 0 0 0 .47 2.8 0 0 0 -1.15'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+        opacity: 0.22;
+        animation: smokeDriftB 34s ease-in-out infinite alternate;
+    }
+    @keyframes smokeDriftA {
+        from { transform: translate3d(-4%, 3%, 0) scale(1.05); }
+        to   { transform: translate3d(5%, -4%, 0) scale(1.18); }
+    }
+    @keyframes smokeDriftB {
+        from { transform: translate3d(5%, -3%, 0) scale(1.15) scaleX(-1); }
+        to   { transform: translate3d(-5%, 4%, 0) scale(1.05) scaleX(-1); }
+    }
+
+    /* ГЛИТЧ МОДЕЛИ — короткая вспышка раз в ~7 секунд */
+    @keyframes modelGlitch {
+        0%, 91.9%, 96.1%, 100% { transform: none; filter: contrast(1.08) saturate(1.08) brightness(0.98); }
+        92%   { transform: translateX(-5px); filter: contrast(1.1) saturate(1.2) drop-shadow(4px 0 0 rgba(0,240,255,0.75)) drop-shadow(-4px 0 0 rgba(255,45,120,0.85)); }
+        93.2% { transform: translateX(6px) skewX(-1.2deg); filter: contrast(1.2) saturate(1.3) hue-rotate(-12deg) drop-shadow(-5px 0 0 rgba(0,240,255,0.7)) drop-shadow(5px 0 0 rgba(255,45,120,0.8)); }
+        94.4% { transform: translate(-3px, 1px); filter: contrast(1.1) brightness(1.15) drop-shadow(3px 0 0 rgba(0,240,255,0.6)); }
+        95.3% { transform: translateX(2px) skewX(0.8deg); filter: contrast(1.08) saturate(1.1) drop-shadow(-3px 0 0 rgba(255,45,120,0.7)); }
+    }
+    @keyframes glitchSlice {
+        0%, 91.9%, 96.1%, 100% { opacity: 0; }
+        92%   { opacity: 1; top: 24%; height: 5px; }
+        93.2% { opacity: 1; top: 63%; height: 3px; }
+        94.4% { opacity: 0.7; top: 41%; height: 12px; }
+        95.3% { opacity: 1; top: 77%; height: 4px; }
+    }
+
     /* ФОТО НА ГЛАВНОЙ — вырезанная (без фона) фигура, прижата вправо-вниз (редактируется в админке: Settings → Картинка на главной) */
     .hero-photo {
         position: absolute;
         inset: 0;
-        left: 32%;
-        right: 2.5%;          /* модель чуть левее */
+        left: 0;              /* на всю ширину — нет границ блока */
+        right: 0;             /* и справа тоже */
         bottom: 57px;         /* FIX: модель заканчивается над бегущей строкой */
         z-index: 1;
         -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 86%, transparent 100%);
@@ -350,24 +412,22 @@
         max-width: none;
         object-fit: contain;
         object-position: bottom right;
+        margin-right: 2.5vw;  /* модель чуть левее */
         filter: contrast(1.08) saturate(1.08) brightness(0.98);
         opacity: 0;
-        animation: fadeIn 1.4s ease 0.2s forwards;
-    }
-    .hero-photo::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        z-index: 1;
-        background: linear-gradient(90deg, #040404 0%, rgba(4,4,4,0) 26%);
+        animation: fadeIn 1.4s ease 0.2s forwards, modelGlitch 7s steps(1, end) 2.5s infinite;
     }
     .hero-photo::after {
         content: '';
         position: absolute;
-        inset: 0;
+        left: 38%; right: 0;
+        top: 30%;
+        height: 4px;
         z-index: 1;
-        background:
-            linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0.5) 100%);
+        opacity: 0;
+        background: linear-gradient(90deg, transparent, rgba(255,45,120,0.55) 20%, rgba(0,240,255,0.35) 60%, transparent);
+        mix-blend-mode: screen;
+        animation: glitchSlice 7s steps(1, end) 2.5s infinite;
     }
 
     /* БОЛЬШОЕ ЛОГО + ПОДПИСЬ СЛЕВА */
@@ -435,8 +495,8 @@
     }
     .hero-spark {
         position: absolute;
-        right: 6%;
-        bottom: 9%;
+        right: 3.1%;
+        bottom: 21%;
         width: 26px;
         height: 26px;
         z-index: 2;
@@ -454,7 +514,7 @@
 
     @media (max-width: 900px) {
         .hero-thorn { display: none; }
-        .hero-photo { left: 10%; }
+        .hero-photo { left: 0; }
         .hero-photo img { height: 95%; opacity: 0.85 !important; }
         .hero-photo::before { background: linear-gradient(90deg, #040404 0%, rgba(4,4,4,0) 55%); }
         .hero-content { left: 50%; top: 10%; transform: translateX(-50%); text-align: center; }
@@ -1754,6 +1814,9 @@
 <section class="hero">
     <div class="hero-bg"></div>
     <div class="hero-noise"></div>
+    <div class="hero-aura" aria-hidden="true"></div>
+    <div class="hero-smoke hero-smoke-a" aria-hidden="true"></div>
+    <div class="hero-smoke hero-smoke-b" aria-hidden="true"></div>
 
     <div class="hero-photo">
         <img id="heroImg" src="model-photo.png" alt="KUNIBOG">
