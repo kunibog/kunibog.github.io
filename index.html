@@ -1721,6 +1721,9 @@
         transform: none;
     }
     .product-card.is-off .product-stock { color: var(--gray); }
+    /* последний неполный ряд растягивается на всю ширину — без серой пустоты */
+    .product-card.span-fill > :not(.product-tag) { width: var(--cw); margin-left: auto; margin-right: auto; }
+    .product-card.span-fill .product-tag { left: calc(50% - var(--cw) / 2 - 10px); }
     .product-img-wrap { position: relative; margin-bottom: 20px; overflow: hidden; }
     .product-img-wrap .product-image { display: block; margin-bottom: 0; }
     .sold-out-stamp {
@@ -2923,7 +2926,29 @@
             </div>
         `; }).join('');
         try { observeMedia(grid); } catch (e) {}
+        try { fillLastRow(); } catch (e) {}
     }
+
+    // Если в последнем ряду карточек меньше, чем колонок, растягиваем их, чтобы не светился серый фон сетки
+    function fillLastRow() {
+        const grid = document.getElementById('productsGrid');
+        if (!grid) return;
+        const cards = Array.from(grid.children).filter(c => c.classList && c.classList.contains('product-card'));
+        cards.forEach(c => { c.style.gridColumn = ''; c.classList.remove('span-fill'); c.style.removeProperty('--cw'); });
+        const cols = getComputedStyle(grid).gridTemplateColumns.split(' ').map(parseFloat).filter(w => w > 0.5);
+        const n = cards.length, nc = cols.length, rest = nc ? n % nc : 0;
+        if (nc < 2 || !rest) return;
+        const last = cards.slice(n - rest), base = Math.floor(nc / rest), extra = nc % rest;
+        const cw = Math.max(120, cols[0] - 60);
+        last.forEach((c, i) => {
+            const span = base + (i < extra ? 1 : 0);
+            if (span > 1) { c.style.gridColumn = 'span ' + span; c.classList.add('span-fill'); c.style.setProperty('--cw', cw + 'px'); }
+        });
+    }
+    (function () {
+        let t = 0;
+        window.addEventListener('resize', function () { clearTimeout(t); t = setTimeout(function () { try { fillLastRow(); } catch (e) {} }, 120); });
+    })();
     
     // PRODUCT MODAL
     function openProductModal(id) {
