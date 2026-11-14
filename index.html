@@ -1711,12 +1711,18 @@
         transform: none;
     }
     .product-card.is-off .product-stock { color: var(--gray); }
+    .product-img-wrap { position: relative; margin-bottom: 20px; overflow: hidden; }
+    .product-img-wrap .product-image { display: block; margin-bottom: 0; }
     .sold-out-stamp {
         position: absolute;
-        top: 50%; left: 50%;
+        top: 0; right: 0; bottom: 0; left: 0;
+        margin: auto;
         width: 72%;
         max-width: 260px;
-        transform: translate(-50%, -50%) rotate(-8deg);
+        height: auto;
+        max-height: 100%;
+        object-fit: contain;
+        transform: none;
         pointer-events: none;
         z-index: 3;
         opacity: 0.95;
@@ -1758,6 +1764,87 @@
         .admin-grid2 { grid-template-columns: 1fr; }
         .sound-toggle { width: 44px; height: 44px; left: 130px; }
     }
+
+    /* АДМИНКА: порядок категорий */
+    .cat-row { display: flex; align-items: center; gap: 14px; padding: 12px 15px; border: 1px solid var(--border); margin-bottom: 10px; }
+    .cat-order { display: flex; gap: 4px; flex-shrink: 0; }
+    .cat-arrow {
+        width: 34px; height: 34px;
+        background: var(--bg); color: var(--text);
+        border: 1px solid var(--border);
+        font-size: 16px; line-height: 1; cursor: pointer;
+        transition: background .2s, color .2s, border-color .2s;
+    }
+    .cat-arrow:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .cat-arrow:disabled { opacity: .25; cursor: not-allowed; }
+    .cat-name { flex: 1; min-width: 0; }
+    .cat-pos { display: inline-block; min-width: 22px; margin-right: 10px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent); }
+    @media (max-width: 560px) { .cat-row { flex-wrap: wrap; } .cat-name { flex-basis: 100%; order: -1; } }
+
+    /* ФУТЕР: кнопка рекламы */
+    .footer-ad { width: 100%; }
+    .ad-cta {
+        position: relative; width: 100%;
+        display: flex; align-items: center; justify-content: space-between; gap: 20px;
+        padding: 26px 34px;
+        background: var(--accent); color: #fff;
+        border: none; cursor: pointer; overflow: hidden; text-align: left;
+        transition: transform .25s, box-shadow .25s;
+    }
+    .ad-cta::before {
+        content: ''; position: absolute; top: 0; bottom: 0; left: -40%; width: 30%;
+        background: linear-gradient(100deg, transparent, rgba(255,255,255,.35), transparent);
+        transform: skewX(-20deg); animation: adShine 3.4s ease-in-out infinite;
+    }
+    @keyframes adShine { 0%, 55% { left: -40%; } 100% { left: 140%; } }
+    .ad-cta:hover { transform: translateY(-3px); box-shadow: 0 10px 0 rgba(255,45,120,.25); }
+    .ad-cta-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .15em; text-transform: uppercase; opacity: .9; margin-bottom: 8px; display: block; }
+    .ad-cta-title { font-family: 'Unbounded', sans-serif; font-weight: 900; font-style: italic; font-size: clamp(20px, 3.4vw, 38px); text-transform: uppercase; line-height: 1.05; display: block; }
+    .ad-cta-pay { font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: clamp(16px, 2.2vw, 26px); white-space: nowrap; background: #0a0a0a; color: #fff; padding: 14px 20px; position: relative; z-index: 1; }
+    .ad-cta > span:first-child { position: relative; z-index: 1; }
+    @media (max-width: 700px) { .ad-cta { flex-direction: column; align-items: flex-start; padding: 22px; } }
+
+    /* ОКНО РЕКЛАМЫ */
+    .ad-modal {
+        position: fixed; inset: 0; z-index: 360;
+        background: rgba(0,0,0,.93);
+        display: none; align-items: center; justify-content: center; padding: 20px;
+    }
+    .ad-modal.open { display: flex; }
+    .ad-content {
+        background: var(--card-bg); border: 1px solid var(--border);
+        width: 100%; max-width: 760px; max-height: 92vh; overflow-y: auto;
+        padding: 40px; position: relative;
+        animation: adIn .35s cubic-bezier(.2,.8,.2,1);
+    }
+    @keyframes adIn { from { opacity: 0; transform: translateY(24px) scale(.98); } to { opacity: 1; transform: none; } }
+    .ad-close { position: absolute; top: 14px; right: 18px; background: none; border: none; color: var(--text); font-size: 28px; cursor: pointer; }
+    .ad-kicker { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .15em; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
+    .ad-title { font-family: 'Unbounded', sans-serif; font-weight: 900; font-style: italic; text-transform: uppercase; font-size: clamp(22px, 4vw, 34px); line-height: 1.05; margin-bottom: 22px; }
+    .ad-video-box { position: relative; border: 2px solid var(--accent); box-shadow: 8px 8px 0 var(--accent); margin: 0 8px 30px 0; background: #0a0a0a; }
+    .ad-video-box video { display: block; width: 100%; height: auto; }
+    .ad-payout { display: flex; align-items: stretch; background: #0a0a0a; color: #fff; margin-bottom: 26px; }
+    .ad-payout-num { background: var(--accent); padding: 18px 22px; font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: clamp(22px, 4vw, 34px); display: flex; align-items: center; white-space: nowrap; }
+    .ad-payout-text { padding: 14px 20px; font-size: 14px; line-height: 1.45; display: flex; align-items: center; }
+    .ad-payout-text b { color: var(--accent); }
+    .ad-steps { list-style: none; counter-reset: s; margin-bottom: 24px; }
+    .ad-steps li { counter-increment: s; display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px; line-height: 1.5; }
+    .ad-steps li::before { content: counter(s, decimal-leading-zero); font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent); padding-top: 2px; flex-shrink: 0; }
+    .ad-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+    .ad-chips span { font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase; border: 1px solid var(--border); padding: 7px 12px; }
+    .ad-note { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--gray); line-height: 1.6; margin-bottom: 26px; }
+    .ad-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .ad-btn {
+        flex: 1; min-width: 200px; text-align: center; text-decoration: none; cursor: pointer;
+        padding: 16px 22px; font-weight: 700; font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+        border: 1px solid var(--accent); transition: transform .2s, background .2s, color .2s;
+    }
+    .ad-btn:hover { transform: translateY(-2px); }
+    .ad-btn.primary { background: var(--accent); color: #fff; font-family: inherit; }
+    .ad-btn:disabled { opacity: .7; cursor: progress; transform: none; }
+    .ad-btn.ghost { background: transparent; color: var(--accent); }
+    .ad-btn.ghost:hover { background: var(--accent); color: #fff; }
+    @media (max-width: 560px) { .ad-content { padding: 26px 20px; } .ad-payout { flex-direction: column; } }
 </style>
 </head>
 <body>
@@ -1913,10 +2000,47 @@
         <li><a href="https://www.instagram.com/kunibog.clothing" target="_blank">Instagram</a></li>
         <li><a href="#" onclick="openOrderStatusModal(); return false;">Статус заказа</a></li>
     </ul>
+    <div class="footer-ad">
+        <button class="ad-cta" onclick="openAdModal()">
+            <span>
+                <span class="ad-cta-label">Для блогеров и монтажёров</span>
+                <span class="ad-cta-title">Заработай на рекламе — вставь наш баннер в видео</span>
+            </span>
+            <span class="ad-cta-pay">100 USDT / 100K ▶</span>
+        </button>
+    </div>
     <div class="footer-copy">
         © 2027 KUNIBOG. All rights reserved. Made in Riga.
     </div>
 </footer>
+
+<!-- AD / PARTNER MODAL -->
+<div class="ad-modal" id="adModal" role="dialog" aria-modal="true" aria-label="Реклама KUNIBOG">
+    <div class="ad-content">
+        <button class="ad-close" onclick="closeAdModal()" aria-label="Закрыть">×</button>
+        <div class="ad-kicker">// Partner program</div>
+        <h3 class="ad-title">Вставь баннер в видео —<br>получай USDT</h3>
+        <div class="ad-video-box">
+            <video id="adVideo" muted loop playsinline preload="none" poster="kunibog-banner-poster.jpg" data-src="kunibog-banner.mp4"></video>
+        </div>
+        <div class="ad-payout">
+            <div class="ad-payout-num">100 USDT</div>
+            <div class="ad-payout-text"><span>за каждые <b>100 000 просмотров</b> видео с нашим баннером. Считаем по факту, платим в USDT.</span></div>
+        </div>
+        <div class="ad-chips"><span>TikTok</span><span>Instagram Reels</span><span>YouTube Shorts</span></div>
+        <ol class="ad-steps">
+            <li><span>Скачай баннер кнопкой ниже (MP4, 1080×400, без звука, зацикленный).</span></li>
+            <li><span>Наложи его поверх своего ролика в CapCut / InShot / любом редакторе — лучше в нижней трети кадра, чтобы было видно весь ролик.</span></li>
+            <li><span>Выложи видео в TikTok, Reels или Shorts и пришли ссылку в Telegram <b>@paradoxy</b>.</span></li>
+            <li><span>Когда видео наберёт просмотры — получи выплату в USDT.</span></li>
+        </ol>
+        <div class="ad-note">Условия выплат обсуждаем лично в Telegram: @paradoxy. Баннер должен быть виден в ролике целиком, без обрезки.</div>
+        <div class="ad-actions">
+            <a class="ad-btn primary" href="kunibog-banner.mp4" download="kunibog-banner.mp4">⬇ Скачать баннер</a>
+            <a class="ad-btn ghost" href="https://t.me/paradoxy" target="_blank" rel="noopener">Написать в TG @paradoxy</a>
+        </div>
+    </div>
+</div>
 
 <!-- PRODUCT MODAL -->
 <div class="product-modal" id="productModal">
@@ -2686,12 +2810,36 @@
     function renderAdminCategories() {
         const list = document.getElementById('adminCategoryList');
         if (!list) return;
-        list.innerHTML = categories.map(c => `
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; border: 1px solid var(--border); margin-bottom: 10px;">
-                <div><strong>${c.label}</strong> <span style="color: var(--gray); margin-left: 10px;">#${c.key}</span></div>
+        const last = categories.length - 1;
+        list.innerHTML = categories.map((c, i) => `
+            <div class="cat-row">
+                <div class="cat-order">
+                    <button class="cat-arrow" title="В начало" ${i === 0 ? 'disabled' : ''} onclick="moveCategory('${c.key}', 'first')">⇈</button>
+                    <button class="cat-arrow" title="Выше" ${i === 0 ? 'disabled' : ''} onclick="moveCategory('${c.key}', -1)">↑</button>
+                    <button class="cat-arrow" title="Ниже" ${i === last ? 'disabled' : ''} onclick="moveCategory('${c.key}', 1)">↓</button>
+                    <button class="cat-arrow" title="В конец" ${i === last ? 'disabled' : ''} onclick="moveCategory('${c.key}', 'last')">⇊</button>
+                </div>
+                <div class="cat-name"><span class="cat-pos">${i + 1}</span><strong>${c.label}</strong> <span style="color: var(--gray); margin-left: 10px;">#${c.key}</span></div>
                 <button onclick="deleteCategory('${c.key}')" style="background: var(--accent); color: white; border: none; padding: 5px 10px; cursor: pointer; font-size: 12px;">Delete</button>
             </div>
         `).join('');
+    }
+
+    // Порядок категорий: порядок массива = порядок кнопок на сайте
+    function moveCategory(key, dir) {
+        const i = categories.findIndex(c => c.key === key);
+        if (i < 0) return;
+        let j = i;
+        if (dir === 'first') j = 0;
+        else if (dir === 'last') j = categories.length - 1;
+        else j = Math.max(0, Math.min(categories.length - 1, i + dir));
+        if (j === i) return;
+        const [item] = categories.splice(i, 1);
+        categories.splice(j, 0, item);
+        renderCategoryFilters();
+        renderAdminCategories();
+        renderAdminProducts();
+        saveAllData();
     }
 
     function addCategory() {
@@ -2729,8 +2877,10 @@
             return `
             <div class="product-card ${(s.ended || s.soldOut) ? 'is-off' : ''}" onclick="openProductModal(${p.id})">
                 ${p.tag && !s.soldOut ? `<span class="product-tag">${p.tag}</span>` : ''}
-                <img src="${p.images[0]}" alt="${p.name}" class="product-image">
-                ${s.soldOut ? `<img src="soldout.png" alt="Sold out" class="sold-out-stamp">` : ''}
+                <div class="product-img-wrap">
+                    <img src="${p.images[0]}" alt="${p.name}" class="product-image">
+                    ${s.soldOut ? `<img src="soldout.png" alt="Sold out" class="sold-out-stamp">` : ''}
+                </div>
                 <div class="product-info">
                     <div>
                         <div class="product-name">${p.name}</div>
@@ -3949,6 +4099,24 @@
 
     frame.addEventListener('load', function () { pushText(); sync(); });
 })();
+</script>
+<script>
+/* РЕКЛАМНОЕ ОКНО: видео грузится только при открытии, при закрытии — пауза */
+function openAdModal() {
+    var m = document.getElementById('adModal'), v = document.getElementById('adVideo');
+    if (v && !v.getAttribute('src')) v.setAttribute('src', v.dataset.src);
+    m.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    if (v) { var p = v.play(); if (p && p.catch) p.catch(function () {}); }
+}
+function closeAdModal() {
+    var m = document.getElementById('adModal'), v = document.getElementById('adVideo');
+    m.classList.remove('open');
+    document.body.style.overflow = '';
+    if (v) v.pause();
+}
+document.getElementById('adModal').addEventListener('click', function (e) { if (e.target === this) closeAdModal(); });
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeAdModal(); });
 </script>
 </body>
 </html>
