@@ -256,6 +256,14 @@
     .nav-links a:hover {
         color: var(--accent);
     }
+    .nav-links a.nav-earn { color: var(--accent); display: inline-flex; align-items: center; gap: 8px; }
+    .nav-links a.nav-earn::after {
+        content: ''; position: absolute; left: 0; right: 0; bottom: -6px; height: 1px;
+        background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform .3s;
+    }
+    .nav-links a.nav-earn:hover::after { transform: scaleX(1); }
+    .nav-earn-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: earnBlink 1.4s ease-in-out infinite; }
+    @keyframes earnBlink { 0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(255,45,120,.6); } 50% { opacity: .4; box-shadow: 0 0 0 5px rgba(255,45,120,0); } }
     
     .cart-icon {
         position: relative;
@@ -782,11 +790,12 @@
         background: #000;
     }
     
-    .modal-gallery img {
+    .modal-gallery img, .modal-gallery video {
         width: 100%;
         height: 100%;
         object-fit: cover;
         min-height: 400px;
+        display: block;
     }
     
     .gallery-nav {
@@ -1002,7 +1011,7 @@
         border-bottom: 1px solid var(--border);
     }
     
-    .cart-item img {
+    .cart-item img, .cart-item video {
         width: 80px;
         height: 100px;
         object-fit: cover;
@@ -1494,7 +1503,8 @@
     /* MOBILE */
     @media (max-width: 768px) {
         nav { padding: 20px; }
-        .nav-links { display: none; }
+        .nav-links { display: flex; gap: 0; }
+        .nav-links li:not(.nav-earn-li) { display: none; }
         section { padding: 60px 20px; }
         .cart-sidebar { width: 100%; right: -100%; }
         .modal-content { grid-template-columns: 1fr; }
@@ -1890,6 +1900,7 @@
         <li><a href="#shop">Shop</a></li>
         <li><a href="#about">Manifesto</a></li>
         <li><a href="#contact">Contact</a></li>
+        <li class="nav-earn-li"><a href="#" class="nav-earn" onclick="openAdModal(); return false;"><i class="nav-earn-dot"></i>Earn $100</a></li>
     </ul>
     <div class="cart-icon" onclick="toggleCart()">
         CART
@@ -2037,7 +2048,7 @@
         <div class="ad-note">Условия выплат обсуждаем лично в Telegram: @paradoxy. Баннер должен быть виден в ролике целиком, без обрезки.</div>
         <div class="ad-actions">
             <a class="ad-btn primary" href="kunibog-banner.mp4" download="kunibog-banner.mp4">⬇ Скачать баннер</a>
-            <a class="ad-btn ghost" href="https://t.me/paradoxy" target="_blank" rel="noopener">Написать в TG @paradoxy</a>
+            <a class="ad-btn ghost" data-keep-href="1" href="https://t.me/paradoxy" target="_blank" rel="noopener">Написать в TG @paradoxy</a>
         </div>
     </div>
 </div>
@@ -2048,6 +2059,7 @@
         <button class="modal-close" onclick="closeProductModal()">×</button>
         <div class="modal-gallery">
             <img id="modalImage" src="" alt="">
+            <video id="modalVideo" muted loop playsinline controls style="display:none"></video>
             <button class="gallery-arrow gallery-prev" onclick="changeImage(-1)">‹</button>
             <button class="gallery-arrow gallery-next" onclick="changeImage(1)">›</button>
             <div class="gallery-nav" id="galleryNav"></div>
@@ -2153,8 +2165,8 @@
                 <textarea id="newProductDesc" rows="3" placeholder="Oversized fit, 100% cotton..."></textarea>
             </div>
             <div class="form-group">
-                <label>Image URLs (comma separated)</label>
-                <input type="text" id="newProductImages" placeholder="https://..., https://...">
+                <label>Фото / GIF / видео (mp4, webm) — имена файлов из репозитория или ссылки через запятую</label>
+                <input type="text" id="newProductImages" placeholder="photo.jpg, anim.gif, video.mp4">
             </div>
             <button class="save-btn" onclick="addProduct()">Add Product</button>
             
@@ -2696,7 +2708,7 @@
         if (st.usdRate > 0) usdRateRub = st.usdRate;
         if (st.rateMode) rateMode = st.rateMode;
         if (st.instagram) document.querySelectorAll('a[href*="instagram.com"]').forEach(a => a.href = st.instagram);
-        if (st.telegram) document.querySelectorAll('a[href*="t.me/"]').forEach(a => a.href = st.telegram);
+        if (st.telegram) document.querySelectorAll('a[href*="t.me/"]:not([data-keep-href])').forEach(a => a.href = st.telegram);
         if (st.email) document.querySelectorAll('a[href^="mailto:"]').forEach(a => a.href = 'mailto:' + st.email);
         if (st.heroImage) { const h = document.getElementById('heroImg'); if (h) h.src = st.heroImage; }
     }
@@ -2865,6 +2877,25 @@
         saveAllData();
     }
     
+    // МЕДИА: картинки, GIF и видео (mp4 / webm / mov) в карточках, галерее и корзине
+    function isVideoUrl(u) { return /\.(mp4|webm|mov|m4v|ogv)(\?|#|$)/i.test(String(u || '')); }
+    function mediaTag(u, cls, alt) {
+        return isVideoUrl(u)
+            ? `<video class="${cls}" src="${esc(u)}" muted loop playsinline preload="metadata" data-autoplay="1" aria-label="${esc(alt || '')}"></video>`
+            : `<img src="${esc(u)}" alt="${esc(alt || '')}" class="${cls}">`;
+    }
+    // видео играют только когда видны на экране (экономит трафик и батарею)
+    let mediaIO = null;
+    function observeMedia(root) {
+        const vids = (root || document).querySelectorAll('video[data-autoplay]');
+        if (!('IntersectionObserver' in window)) { vids.forEach(v => { const p = v.play(); if (p && p.catch) p.catch(() => {}); }); return; }
+        if (!mediaIO) mediaIO = new IntersectionObserver(es => es.forEach(e => {
+            const v = e.target;
+            if (e.isIntersecting) { const p = v.play(); if (p && p.catch) p.catch(() => {}); } else v.pause();
+        }), { threshold: 0.2 });
+        vids.forEach(v => mediaIO.observe(v));
+    }
+
     // RENDER PRODUCTS
     function renderProducts() {
         const grid = document.getElementById('productsGrid');
@@ -2878,7 +2909,7 @@
             <div class="product-card ${(s.ended || s.soldOut) ? 'is-off' : ''}" onclick="openProductModal(${p.id})">
                 ${p.tag && !s.soldOut ? `<span class="product-tag">${p.tag}</span>` : ''}
                 <div class="product-img-wrap">
-                    <img src="${p.images[0]}" alt="${p.name}" class="product-image">
+                    ${mediaTag(p.images[0], 'product-image', p.name)}
                     ${s.soldOut ? `<img src="soldout.png" alt="Sold out" class="sold-out-stamp">` : ''}
                 </div>
                 <div class="product-info">
@@ -2891,6 +2922,7 @@
                 ${st ? `<div class="product-stock">${st}</div>` : ''}
             </div>
         `; }).join('');
+        observeMedia(grid);
     }
     
     // PRODUCT MODAL
@@ -2898,7 +2930,7 @@
         currentProduct = products.find(p => p.id === id);
         currentImageIndex = 0;
         
-        document.getElementById('modalImage').src = currentProduct.images[0];
+        setModalMedia(currentProduct.images[0]);
         document.getElementById('modalCategory').textContent = currentProduct.category;
         document.getElementById('modalTitle').textContent = currentProduct.name;
         document.getElementById('modalPrice').innerHTML = formatPrice(currentProduct.price);
@@ -2923,9 +2955,21 @@
     }
     
     function closeProductModal() {
+        const mv = document.getElementById('modalVideo'); if (mv) mv.pause();
         document.getElementById('productModal').classList.remove('open');
     }
     
+    function setModalMedia(u) {
+        const img = document.getElementById('modalImage'), vid = document.getElementById('modalVideo');
+        if (isVideoUrl(u)) {
+            img.style.display = 'none'; vid.style.display = 'block';
+            vid.src = u; vid.muted = true; const p = vid.play(); if (p && p.catch) p.catch(() => {});
+        } else {
+            vid.pause(); vid.removeAttribute('src'); vid.style.display = 'none';
+            img.style.display = ''; img.src = u;
+        }
+    }
+
     function changeImage(dir) {
         currentImageIndex += dir;
         if (currentImageIndex < 0) currentImageIndex = currentProduct.images.length - 1;
@@ -2935,7 +2979,7 @@
     
     function setImage(index) {
         currentImageIndex = index;
-        document.getElementById('modalImage').src = currentProduct.images[index];
+        setModalMedia(currentProduct.images[index]);
         document.querySelectorAll('.gallery-dot').forEach((dot, i) => {
             dot.classList.toggle('active', i === index);
         });
@@ -2990,7 +3034,7 @@
         } else {
             cartItems.innerHTML = cart.map((item, index) => `
                 <div class="cart-item">
-                    <img src="${item.images[0]}" alt="${item.name}">
+                    ${mediaTag(item.images[0], '', item.name).replace('data-autoplay="1"', 'autoplay')}
                     <div class="cart-item-details">
                         <div class="cart-item-name">${item.name}${item.chosen ? ` · ${esc(item.chosen)}` : ''}</div>
                         <div class="cart-item-price">${formatPrice(item.price)}</div>
@@ -3353,7 +3397,7 @@
                         <div class="form-group"><label>Конец дропа (пусто = без таймера)</label><input type="datetime-local" id="ep-dropend" value="${toLocalInput(p.dropEnd)}"></div>
                     </div>
                     <div class="form-group"><label>Описание</label><textarea id="ep-desc" rows="3">${esc(p.desc)}</textarea></div>
-                    <div class="form-group"><label>Картинки (URL или имена файлов через запятую)</label><input type="text" id="ep-images" value="${esc((p.images || []).join(', '))}"></div>
+                    <div class="form-group"><label>Фото / GIF / видео mp4, webm (URL или имена файлов через запятую; первое — на карточке)</label><input type="text" id="ep-images" value="${esc((p.images || []).join(', '))}"></div>
                     <button class="save-btn" onclick="saveEditedProduct(${p.id})">Save Changes</button>
                     <button class="save-btn" style="background:transparent;border:1px solid var(--border);color:var(--text);margin-left:8px;" onclick="cancelEditProduct()">Отмена</button>
                 </div>` : ''}
