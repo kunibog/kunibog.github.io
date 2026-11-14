@@ -2885,7 +2885,7 @@
             : `<img src="${esc(u)}" alt="${esc(alt || '')}" class="${cls}">`;
     }
     // видео играют только когда видны на экране (экономит трафик и батарею)
-    let mediaIO = null;
+    var mediaIO = null; // var, а не let: renderProducts() вызывается при старте раньше этой строки
     function observeMedia(root) {
         const vids = (root || document).querySelectorAll('video[data-autoplay]');
         if (!('IntersectionObserver' in window)) { vids.forEach(v => { const p = v.play(); if (p && p.catch) p.catch(() => {}); }); return; }
@@ -2922,7 +2922,7 @@
                 ${st ? `<div class="product-stock">${st}</div>` : ''}
             </div>
         `; }).join('');
-        observeMedia(grid);
+        try { observeMedia(grid); } catch (e) {}
     }
     
     // PRODUCT MODAL
